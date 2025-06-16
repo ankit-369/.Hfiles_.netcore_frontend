@@ -45,10 +45,16 @@ const errorHandler = (error: any) => {
   return Promise.reject({ ...error });
 };
 
-
+// https://localhost:44358/api/Login
 // Axios Instance
 const axiosInstance = axios.create({
-  baseURL: "https://localhost:7227/api/", // Change if needed
+  baseURL: " https://localhost:44358/api/", // Change if needed
+});
+
+// https://localhost:44358/api/OtpLogin/send-otp
+// Axios Instance
+const axiosInstance = axios.create({
+  baseURL: " https://localhost:44358/api/", // Change if needed
 });
 
 // Attach interceptors

@@ -1,0 +1,646 @@
+/* src/app/Addbasicdetails/addbasicdetails.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+.user-info-main {
+    background: linear-gradient(180deg, #FFFFFF 20%, #CAE5FF 85%);
+    z-index: -1;
+    min-height: 100vh;
+    padding-bottom: 20vh;
+}
+
+.seleced-option-color {
+    color: #0512b9 !important;
+}
+
+.form-control option {
+    color: #0512b9 !important;
+}
+
+.form-control::placeholder, 
+.form-control::selection {
+    color: #0512b9 !important;
+}
+
+.signin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0 20px;
+}
+
+.signin-form .form-select {
+    border-radius: 30px;
+}
+
+.signin-form input,
+.signin-form select {
+    width: 100%;
+    border: 1px solid black !important;
+    border-radius: 19px;
+    padding: 10px 40px 10px 50px !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    height: auto !important;
+}
+
+.signin-form input[type="date"] {
+    text-align: left;
+    color: #0512b9 !important;
+}
+
+.signin-form input {
+    font-family: 'Montserrat', sans-serif;
+    color: #0331B5;
+    font-size: 12px;
+}
+
+.signin-form select {
+    font-family: 'Montserrat', sans-serif;
+    color: #e6e6e6;
+}
+
+.signin-form input:focus {
+    outline: 0;
+    box-shadow: none;
+}
+
+.signin-form input::placeholder {
+    color: #ccc;
+    font-weight: 500;
+}
+
+.profile-img {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.signin-form .form-select {
+    color: #0331B5;
+    font-size: 12px;
+}
+
+.signin-form .imp-star {
+    position: relative;
+    left: 100%;
+    top: 15px;
+    color: red;
+}
+
+.signin-form .form-select option {
+    color: #a1a1a1;
+}
+
+.signin-form input::placeholder {
+    color: #0512b9 !important;
+}
+
+.signin-form input, 
+.signin-form select {
+    border-radius: 30px;
+}
+
+.has-search .form-control-feedback {
+    position: absolute;
+    z-index: 2;
+    display: block;
+    width: 2.375rem;
+    height: 2.375rem;
+    line-height: 2.375rem;
+    text-align: center;
+    pointer-events: none;
+    color: #fdd001;
+    margin-left: 5px;
+    margin-top: 2px !important;
+}
+
+.Addbasicbtnboth {
+    justify-content: space-around;
+    gap: 10px;
+}
+
+.Addbasicbtnboth .button-change {
+    padding: 12px;
+    border-radius: 50px;
+    border: 0;
+    outline: 0;
+    color: #000000;
+    cursor: pointer;
+    margin-top: 20px;
+    font-family: 'Poppins', Sans-serif !important;
+    font-size: 13px;
+    background-color: #F9E380;
+    width: 200px;
+    box-shadow: 0px 5px 5px #00000045;
+}
+
+.back-arrow-btn-2 {
+    position: absolute;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    border-radius: 50px;
+    border: 0;
+    outline: 0;
+    cursor: pointer;
+    margin-top: 3px !important;
+    font-family: 'Red Hat Display', Sans-serif !important;
+    font-weight: 600;
+    font-size: 13px;
+    background: transparent;
+    color: inherit;
+}
+
+.change-password-link {
+    display: block;
+    color: blue;
+    text-decoration: underline !important;
+    text-align: center;
+    font-size: 12px;
+}
+
+.click-text {
+    font-family: 'Montserrat', sans-serif;
+    color: black;
+    letter-spacing: 0.5px;
+}
+
+.password-text {
+    font-family: 'Montserrat', sans-serif;
+    color: blue;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.form-control {
+    padding-right: 40px;
+}
+
+.country-flag {
+    position: absolute;
+    right: 15px;
+    width: 25px;
+    height: 18px;
+}
+
+.hidden {
+    visibility: hidden;
+}
+
+.profile-img img,
+.profile-image {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    object-position: center;
+    border: 1px solid #FFD100;
+    border-radius: 50%;
+}
+
+.profile-details-1 {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.profile-details-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.profile-details-2 p {
+    margin: 10px 0 0 0;
+    font-family: 'Montserrat';
+    font-size: 12px;
+}
+
+.update-button {
+    padding: 10px 12px;
+    border-radius: 50px;
+    border: 0;
+    outline: 0;
+    color: #000000;
+    cursor: pointer;
+    margin-top: 20px;
+    font-family: 'Poppins', Sans-serif !important;
+    font-weight: 400;
+    font-size: 15px;
+    background-color: #F9E380;
+    width: 200px;
+    border: 1px solid #333333;
+    text-align: center;
+}
+
+.update-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.profile_buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-img {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile_heading {
+    display: none;
+}
+
+.pincode-input-error,
+.error-text {
+    color: red;
+    display: block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.general-error {
+    color: red;
+    text-align: center;
+    margin-top: 10px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.plus-top-left {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+}
+
+.profile-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 0 15px;
+}
+
+.profile_subcontainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 600px;
+}
+
+.col-12 {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+/* Tablet Responsiveness */
+@media (min-width: 768px) {
+    .signin-form {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 50px;
+    }
+
+    .profile-details-2 p {
+        display: none;
+    }
+
+    .signin-form input, 
+    .signin-form select {
+        border-radius: 15px;
+        width: 275px;
+    }
+
+    .signin-form .form-select {
+        border-radius: 15px;
+        width: 275px;
+    }
+
+    .update-button {
+        margin-top: 40px;
+        border: none;
+        box-shadow: 0px 5px 5px #00000045;
+    }
+
+    .profile_buttons {
+        gap: 15px;
+    }
+
+    .user-info-main .profile-img img,
+    .user-info-main .profile-image {
+        margin: 0;
+    }
+
+    .profile-img {
+        margin-top: 50px;
+    }
+
+    .back-arrow-btn-2 {
+        font-size: 14px;
+    }
+
+    .update-button {
+        font-size: 14px;
+        width: 210px;
+    }
+
+    .Addbasicbtnboth .button-change {
+        font-size: 14px;
+        width: 210px;
+    }
+
+    .profile-container {
+        padding: 0 30px;
+    }
+}
+
+/* Laptop Responsiveness */
+@media (min-width: 1024px) {
+    .profile-container {
+        display: flex;
+        margin-top: 25px;
+        justify-content: space-around;
+        align-items: center;
+        flex-direction: row;
+        gap: 40px;
+        padding: 0 50px;
+    }
+
+    .profile_subcontainer {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        max-width: 800px;
+    }
+
+    .profile-img img,
+    .profile-image {
+        width: 275px;
+        height: 275px;
+    }
+
+    .profile_heading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .profile_heading p {
+        margin: 0;
+        font-family: 'Poppins';
+        font-size: 22px;
+        font-weight: 600;
+        color: #0331B5;
+        text-align: center;
+    }
+
+    .profile_heading span {
+        font-family: 'Montserrat';
+        font-size: 16px;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+
+    .profile_heading_divider {
+        height: 1px;
+        background-color: #000000;
+        width: 80%;
+        max-width: 125px;
+        margin: 10px auto;
+        font-weight: normal;
+    }
+
+    .update-button {
+        margin-top: 20px;
+    }
+
+    .back-arrow-btn-2 {
+        font-size: 15px;
+    }
+
+    .Addbasicbtnboth .button-change {
+        font-size: 15px;
+        width: 225px;
+    }
+
+    .update-button {
+        font-size: 15px;
+        width: 225px;
+    }
+
+    .signin-form input, 
+    .signin-form select {
+        font-size: 14px;
+        font-weight: normal;
+        padding-right: 20px !important;
+    }
+
+    .signin-form .form-select {
+        font-size: 12.5px;
+    }
+
+    .has-search .form-control-feedback {
+        margin-top: 2px;
+    }
+
+    .pincode-input-error,
+    .error-text {
+        font-size: 14px;
+    }
+
+    .profile-img {
+        flex-shrink: 0;
+        margin-right: 20px;
+    }
+
+    .profile_subcontainer {
+        flex: 1;
+    }
+}
+
+/* Desktop Responsiveness */
+@media (min-width: 1200px) {
+    .profile-container {
+        margin-top: 25px;
+        gap: 40px;
+    }
+
+    .profile_subcontainer {
+        gap: 20px;
+    }
+
+    .profile-img img,
+    .profile-image {
+        width: 350px;
+        height: 350px;
+    }
+
+    .profile_heading p {
+        font-size: 24px;
+    }
+
+    .profile_heading span {
+        font-size: 18px;
+    }
+
+    .signin-form {
+        gap: 70px;
+    }
+
+    .signin-form input, 
+    .signin-form select {
+        font-size: 15px;
+        font-weight: normal;
+        width: 300px;
+    }
+
+    .signin-form .form-select {
+        font-size: 15px;
+        width: 300px;
+    }
+
+    .has-search .form-control-feedback {
+        margin-top: 3px;
+    }
+
+    .back-arrow-btn-2 {
+        font-size: 16px;
+    }
+
+    .Addbasicbtnboth .button-change {
+        padding: 14px;
+        font-size: 16px;
+        width: 250px;
+    }
+
+    .update-button {
+        padding: 14px;
+        font-size: 16px;
+        width: 250px;
+        margin-top: 10px;
+    }
+
+    .change-password-link {
+        font-size: 14px;
+    }
+
+    .pincode-input-error,
+    .error-text {
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .Addbasicbtnboth .button-change {
+        padding: 8px 15px;
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 540px) {
+    .Addbasicbtnboth {
+        flex-direction: column;
+    }
+
+    .Addbasicbtnboth .button-change {
+        padding: 8px 10px;
+        font-size: 9px;
+    }
+
+    .profile-img img,
+    .profile-image {
+        width: 200px;
+        height: 200px;
+    }
+}
+
+@media (max-width: 280px) {
+    .Addbasicbtnboth .button-change {
+        padding: 8px 10px;
+        font-size: 9px;
+    }
+}
+
+@media (min-width: 700px) and (max-width: 1022px) {
+    .user-info-main .profile-img img,
+    .user-info-main .profile-image {
+        width: 200px;
+        height: 200px;
+    }
+
+    .Addbasicbtnboth .button-change {
+        font-size: 10px;
+    }
+
+    .Addbasicbtnboth {
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 1022px) and (max-width: 1024px) {
+    .Addbasicbtnboth .button-change {
+        padding: 8px 10px;
+        font-size: 10px;
+    }
+}
+
+@media (min-width: 1300px) {
+    .profile-img img,
+    .profile-image {
+        width: 400px;
+        height: 400px;
+    }
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 767px) {
+    .signin-form {
+        flex-direction: column;
+        gap: 0;
+        margin: 0 15px;
+    }
+    
+    .profile-details-1,
+    .profile-details-2 {
+        width: 100%;
+        gap: 15px;
+    }
+    
+    .profile-details-2 {
+        margin-top: 15px;
+    }
+    
+    .signin-form input,
+    .signin-form select {
+        width: 100%;
+        font-size: 14px;
+    }
+
+    .profile-container {
+        padding: 0 15px;
+    }
+}
+
+/* Color classes for selected options */
+.color-thm-blue {
+    color: #0331B5 !important;
+}
+
+.mySelect option:checked {
+    color: #0331B5 !important;
+}
