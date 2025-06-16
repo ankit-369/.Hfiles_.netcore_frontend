@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { SignUp1, UserSignUp, UserSignUpOtp, UserSignUpOtpSubmit } from '../services/HfilesServiceApi';
+import Home from '../components/Home';
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +55,7 @@ const SignUp = () => {
       .oneOf([Yup.ref('password'), ""], 'Passwords must match')
       .required('Please confirm your password'),
     captcha: Yup.string()
-      .test('captcha-match', 'Invalid captcha code', function(value) {
+      .test('captcha-match', 'Invalid captcha code', function (value) {
         return value === captchaCode;
       })
       .required('Captcha is required'),
@@ -102,14 +103,14 @@ const SignUp = () => {
 
         const response = await UserSignUp(payload);
         console.log('API Response:', response);
-        
+
         // If API call is successful, show OTP section
         setShowOtpSection(true);
         setTimer(60);
-        
+
         // Show success message
         alert('Registration successful! Please check your email for OTP.');
-        
+
       } catch (error) {
         console.error('Signup API failed:', error);
       } finally {
@@ -141,13 +142,13 @@ const SignUp = () => {
     e.preventDefault();
     setOtpError('');
     setIsOtpSubmitting(true);
-    
+
     if (otp.length !== 6) {
       setOtpError('Please enter valid 6-digit OTP');
       setIsOtpSubmitting(false);
       return;
     }
-    
+
     try {
       // Prepare the OTP verification payload
       const otpPayload = {
@@ -160,14 +161,14 @@ const SignUp = () => {
       // Call the OTP verification API
       const response = await UserSignUpOtpSubmit(otpPayload);
       console.log('OTP Verification Response:', response);
-      
+
       // Handle successful verification
       alert('Registration completed successfully!');
-      
+
       // Redirect to login page or dashboard
       // window.location.href = '/login';
       // or use your routing method
-      
+
     } catch (error) {
       console.error('OTP Verification failed:', error);
       setOtpError('Invalid OTP. Please try again.');
@@ -202,16 +203,17 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <Home>
+    <div className="min-h-auto">
       {/* Main Content */}
-      <div className="flex flex-col md:flex-row min-h-screen">
+      <div className="flex flex-col md:flex-row ">
         {/* Left Side - Image (Hidden on Mobile) */}
         <div className="hidden md:flex flex-1 bg-white items-center justify-center p-8">
           <div className="max-w-md text-center">
             <div className="relative">
-              <Image 
-                src="/assets/signup-samanta.png" 
-                alt="Sign up illustration" 
+              <Image
+                src="/assets/signup-samanta.png"
+                alt="Sign up illustration"
                 width={500}
                 height={600}
                 className="w-full h-auto object-contain drop-shadow-2xl"
@@ -221,9 +223,9 @@ const SignUp = () => {
         </div>
 
         {/* Right Side - Form */}
-        <div 
-          className="flex-1 flex items-start md:items-center justify-center p-4 md:p-8 relative" 
-          style={{ 
+        <div
+          className="flex-1 flex items-start md:items-center justify-center p-4 md:p-8 relative"
+          style={{
             backgroundColor: '#0331B5',
             backgroundImage: 'url("/Reception Page/002B.png")',
             backgroundRepeat: 'no-repeat',
@@ -331,7 +333,6 @@ const SignUp = () => {
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
                         placeholder="Phone No"
-                        maxLength="10"
                         className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700"
                       />
                     </div>
@@ -410,7 +411,7 @@ const SignUp = () => {
 
                 {/* Captcha - Always Visible */}
                 <div className="text-center space-y-3">
-                  <div 
+                  <div
                     className="bg-white p-4 rounded-lg inline-block border-2 border-gray-300 cursor-pointer hover:bg-gray-50 shadow-sm"
                     onClick={refreshCaptcha}
                     style={{ minWidth: '150px', height: '55px' }}
@@ -464,7 +465,6 @@ const SignUp = () => {
                             setOtpError('');
                           }}
                           placeholder="Enter OTP"
-                          maxLength="6"
                           className="w-full px-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400 text-center text-lg font-mono tracking-widest"
                         />
                       </div>
@@ -500,9 +500,8 @@ const SignUp = () => {
                       type="button"
                       onClick={handleOtpSubmit}
                       disabled={isOtpSubmitting || otp.length !== 6}
-                      className={`bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-12 rounded-full transition-all duration-300 transform hover:scale-105 text-lg ${
-                        (isOtpSubmitting || otp.length !== 6) ? 'opacity-50' : ''
-                      }`}
+                      className={`bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-12 rounded-full transition-all duration-300 transform hover:scale-105 text-lg ${(isOtpSubmitting || otp.length !== 6) ? 'opacity-50' : ''
+                        }`}
                       style={{ minWidth: '200px' }}
                     >
                       {isOtpSubmitting ? 'Registering...' : 'Register'}
@@ -511,9 +510,8 @@ const SignUp = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className={`bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 ${
-                        isSubmitting ? 'opacity-50' : ''
-                      }`}
+                      className={`bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 ${isSubmitting ? 'opacity-50' : ''
+                        }`}
                       style={{ minWidth: '149px' }}
                     >
                       {isSubmitting ? 'Signing Up...' : 'Sign Up'}
@@ -533,6 +531,7 @@ const SignUp = () => {
         </div>
       </div>
     </div>
+    </Home>
   );
 };
 

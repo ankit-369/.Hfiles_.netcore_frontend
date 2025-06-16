@@ -17,30 +17,31 @@ const Header: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0331B5] text-white px-4 py-3 shadow-md">
-      <div className="max-w-screen-xl mx-auto flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-[#0331B5] text-white shadow-md">
+      {/* Top Navbar */}
+      <div className="w-auto  flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3">
         {/* Logo */}
         <div className="flex items-center">
           <img
             src="https://hfiles.in/wp-content/uploads/2022/11/hfiles.png"
             alt="HFiles Logo"
-            className="h-10 w-auto"
+            className="h-10 sm:h-10 md:h-12 lg:h-15 w-auto object-contain"
           />
         </div>
 
         {/* Mobile Menu Toggle */}
         <div className="sm:hidden">
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle Menu">
             {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
 
-        {/* Desktop Nav */}
-        <nav className="hidden sm:flex gap-6 items-center text-sm sm:text-base font-bold">
-          <div className="hover:underline cursor-pointer">About Us</div>
-          <div className="hover:underline cursor-pointer">Article</div>
+        {/* Desktop Navigation */}
+        <nav className="hidden sm:flex gap-4 md:gap-6 items-center text-sm md:text-base font-semibold">
+          <div className="cursor-pointer hover:underline">About Us</div>
+          <div className="cursor-pointer hover:underline">Article</div>
           <button
-            className="bg-yellow-400 text-blue-700 px-4 py-2 rounded hover:bg-yellow-300 transition"
+            className="bg-yellow-400 text-blue-700 px-4 py-2 rounded hover:bg-yellow-300 transition font-bold"
             onClick={handleSignIn}
           >
             Sign Up
@@ -48,33 +49,32 @@ const Header: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => {
         </nav>
       </div>
 
-      {/* Sidebar Drawer - Mobile Only */}
+      {/* Sidebar Drawer for Mobile */}
       <div
-  className={`fixed top-0 left-0 h-full w-full bg-white text-blue-800 z-50 shadow-lg transform transition-transform duration-300 ${
-    isMenuOpen ? "translate-x-0" : "-translate-x-full"
-  } sm:hidden`}
->
-  <div className="flex justify-between items-center p-4 border-b border-gray-200">
-    <h2 className="text-lg font-bold">Menu</h2>
-    <button onClick={() => setIsMenuOpen(false)}>
-      <X size={24} />
-    </button>
-  </div>
-  <div className="flex flex-col p-4 gap-4 font-semibold">
-    <div className="cursor-pointer hover:underline">About Us</div>
-    <div className="cursor-pointer hover:underline">Article</div>
-    <button
-      className="bg-yellow-400 text-blue-700 px-4 py-2 rounded hover:bg-yellow-300 w-fit"
-      onClick={() => {
-        setIsMenuOpen(false);
-        handleSignIn();
-      }}
-    >
-      Sign Up
-    </button>
-  </div>
-</div>
-
+        className={`fixed top-0 left-0 h-full w-full bg-white text-blue-800 z-50 shadow-lg transform transition-transform duration-300 sm:hidden ${
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+          <h2 className="text-lg font-bold">Menu</h2>
+          <button onClick={() => setIsMenuOpen(false)} aria-label="Close Menu">
+            <X size={24} />
+          </button>
+        </div>
+        <div className="flex flex-col p-4 gap-4 font-semibold">
+          <div className="cursor-pointer hover:underline">About Us</div>
+          <div className="cursor-pointer hover:underline">Article</div>
+          <button
+            className="bg-yellow-400 text-blue-700 px-4 py-2 rounded hover:bg-yellow-300 w-fit font-bold"
+            onClick={() => {
+              setIsMenuOpen(false);
+              handleSignIn();
+            }}
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
 
       {/* Overlay */}
       {isMenuOpen && (
