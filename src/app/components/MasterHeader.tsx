@@ -75,7 +75,7 @@ const MasterHeader = () => {
 
         .common-heading img {
           width: 128px;
-          height: 40px;
+          height: 53px;
         }
 
         .common-heading {

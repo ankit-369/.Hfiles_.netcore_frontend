@@ -102,7 +102,7 @@ const PrivacyPolicy = () => {
             </div>
           </div>
         </div>
-<Footer/>
+
         <style jsx>{`
           /* Add global body reset */
           :global(body) {
@@ -422,7 +422,9 @@ const PrivacyPolicy = () => {
             }
           }
         `}</style>
+        
       </div>
+      <Footer/>
     </div>
   );
 };

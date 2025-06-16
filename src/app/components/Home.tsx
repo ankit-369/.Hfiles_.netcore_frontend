@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import Header from './Header';
+import Header from './LandingPage/Header';
 import Footer from './Footer';
 
 interface HomeProps {
