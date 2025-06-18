@@ -15,12 +15,16 @@ export default function Header() {
         />
 
         {/* Sign In Button (Top Right) */}
-        <Link href="/login.aspx">
-          <div className="signup" style={{ visibility: 'hidden' }}>
+        {/* <Link href="/login">
+          <div className="signup">
             <p>Sign In</p>
           </div>
-        </Link>
-
+        </Link>*/}
+    <a href="/login" className="header-signin"> 
+    <div className="signup">
+      <p>Sign In</p>
+    </div>
+    </a>
         {/* Navigation Links */}
         <nav className="nav">
           <ul className="nav-links">
@@ -33,12 +37,12 @@ export default function Header() {
          
           <Link href="/articles">Article</Link>
             </li>
-            <li>
-              <Link href="/login">
+            <li>   
+              <a href="/login">
                 <div className="signup">
                   <p>Sign In</p>
                 </div>
-              </Link>
+              </a>
             </li>
           </ul>
         </nav>

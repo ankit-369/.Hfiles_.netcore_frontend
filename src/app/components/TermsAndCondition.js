@@ -113,9 +113,10 @@ const TermsAndCondition = () => {
                 </p>
               </div>
             </div>
+            <Footer/>
           </div>
         </div>
-<Footer/>
+
         <style jsx>{`
           * {
             margin: 0;

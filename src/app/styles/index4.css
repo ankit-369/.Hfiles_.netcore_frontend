@@ -24,6 +24,38 @@ html, body {
     position: relative;
     height: 80px;
 }
+        .header-signin{
+            text-decoration: none;
+        }
+
+        @media (min-width: 768px){
+            .header-signin{
+                display: none;
+            }
+        }
+
+        .signup {
+        display: flex !important;
+        background-color: #FFD100;
+        width: 5rem;
+        font-family: Montserrat;
+        font-weight: 600;
+        font-size: 17px;
+        text-align: center;
+        color: #0331B5 !important;
+        padding: 10px;
+        border-radius: 10px;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+        @media(min-width: 768px){
+            .signup{
+                width: 6rem;
+            }
+        }
 
 .header img {
     width: 9rem;
@@ -2097,6 +2129,7 @@ html, body {
     width: 50%;
     margin-top: 2rem;
     border-radius: 16px;
+ 
 }
 
 @media(min-width: 365px){
@@ -2112,6 +2145,7 @@ html, body {
         width: 45%;
         margin-top: 3rem;
         border-radius: 16px;
+        margin-left: 97px;
     }
 
     .image-flex img {
@@ -2173,7 +2207,9 @@ html, body {
     
 
     .image-wrapper1 img {
-        width: 10rem;
+   width: 9rem !important;
+        margin-left: 121px;
+        height: 122px;
     }
 
     .image-flex img {
@@ -2749,6 +2785,7 @@ html, body {
 
 .talkus_icon_row img{
     width:3.5rem;
+    margin-left: 55px;
 }
 
 .giveus_call h2 {
@@ -2859,6 +2896,7 @@ html, body {
 
     .talkus_icon_row img {
         width: 4.5rem;
+        margin-left: 55px;
     }
 
     .giveus_call h2 {
@@ -2891,6 +2929,7 @@ html, body {
 
     .talkus_icon_row img {
         width: 5.5rem;
+         margin-left: 65px;
     }
 
     .giveus_call h2 {

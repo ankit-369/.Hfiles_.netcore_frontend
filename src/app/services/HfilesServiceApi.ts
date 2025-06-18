@@ -20,3 +20,12 @@ export const UserSignUpOtp = async (data: any) => {
 export const UserSignUpOtpSubmit = async (data: any) => {
   return axios.post(`${endpoints.Lab_Reports.SignUpotpSubmit}`, data);
 };
+export const AbhaAdharCard = async (data: any) => {
+  return axios.post(`${endpoints.Lab_Reports.abhaadharno}`, data);
+};
+export const AbhaAdharCardOtpVerify = async (data: any) => {
+  return axios.post(`${endpoints.Lab_Reports.abhaadharotpverify}`, data);
+};
+export const AbhaCarddownload = async (data: any) => {
+  return axios.post(`${endpoints.Lab_Reports.abhacarddownload}`, data);
+};

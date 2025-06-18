@@ -57,27 +57,7 @@ export default function FAQPage() {
 
       <div className="page-container">
         {/* Header */}
-        <header className="header">
-          <img src="https://hfiles.in/wp-content/uploads/2022/11/hfiles.png" alt="hfiles logo" />
-          <button className="hamburger" onClick={toggleMobileMenu} type="button">
-            &#9776;
-          </button>
-
-          <nav className={`nav ${showMobileMenu ? 'active' : ''}`}>
-            <ul className="nav-links">
-              <li><a href="/#about_us_section">About us</a></li>
-              <li><a href="https://articles.hfiles.in/">Article</a></li>
-              <li>
-                <a href="/signup">
-                  <div className="signup">
-                    <p>Sign up</p>
-                  </div>
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </header>
-
+        <Header/>
         {/* Main Content */}
         <div className="faq_main">
           <Link href="/" className="back-arrow-btn">
@@ -103,7 +83,7 @@ export default function FAQPage() {
                       </h2>
                       <div className={`accordion-collapse collapse ${openAccordion === faq.id ? 'show' : ''}`}>
                         <div className="accordion-body">
-                          <strong style={{color: '#000000 !important', fontWeight: 'bold'}}>
+                          <strong>
                             {faq.answer}
                           </strong>
                         </div>

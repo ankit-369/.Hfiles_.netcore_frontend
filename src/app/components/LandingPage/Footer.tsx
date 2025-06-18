@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-
+import styles from './Footer.module.css'; 
 export default function Footer() {
   const [showPopup, setShowPopup] = useState(false);
 
@@ -18,19 +18,16 @@ export default function Footer() {
     <>
       {/* Popup */}
       {showPopup && (
-        <div className="popup-overlay">
-          <div className="popup-content">
-            <span className="close-btn" onClick={closePopup}>
-              &times;
-            </span>
-            <h2>Do you want any help with Your Account?</h2>
-            <p>
-              Contact us at{' '}
-              <a href="mailto:contact@hfiles.in">contact@hfiles.com</a>
-            </p>
-          </div>
-        </div>
-      )}
+  <div className={styles.popupOverlay}>
+    <div className={styles.popupContent}>
+      <span className={styles.closeBtn} onClick={closePopup}>
+        &times;
+      </span>
+      <h2 style={{fontSize:'1.5em',fontWeight:'bold'}}>Do you want any help <br/>with Your Account?</h2>
+      <p>Contact us at <a href="mailto:contact@hfiles.in">contact@hfiles.com</a></p>
+    </div>
+  </div>
+)}
 
       {/* Footer Section */}
       <section className="footer_section">

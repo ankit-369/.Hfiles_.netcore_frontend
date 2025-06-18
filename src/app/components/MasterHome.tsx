@@ -20,7 +20,7 @@ const MasterHome: React.FC<HomeProps> = ({ children }) => {
           isMenuOpen ? 'blur-sm pointer-events-none' : ''
         }`}
       >
-        <div className="max-w-screen-xl mx-auto px-4 py-6">
+        <div className="max-w-screen-xl mx-auto px-4 py-6" style={{ width: '100%', maxWidth: '100%'}}>
           {children}
         </div>
       </main>

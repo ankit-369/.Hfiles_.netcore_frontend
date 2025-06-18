@@ -19,17 +19,17 @@ export default function Hero() {
           <h1 className="main-heading">Get Smart With Your Health</h1>
           <p className="sub-text">Join India's Pioneering Social Healthcare Network</p>
 
-          <a href="/signup" className="cta-button">Create your health file</a>
+          <a href="/Signup" className="cta-button">Create your health file</a>
 
-          <div className="badges" style={{height:'auto'}}>
-            <Image style={{height:'auto'}}
+          <div className="badges">
+            <Image 
               src="/journal-page-images/article/SecureStorageAssured.png"
               alt="Secure Storage Assured"
               width={120}
               height={60}
               className="badge"
             />
-            <Image style={{height:'auto'}}
+            <Image 
               src="/journal-page-images/article/AyushmanBharat.png"
               alt="Ayushman Bharat"
               width={120}
@@ -41,7 +41,7 @@ export default function Hero() {
 
         {/* Right Section */}
         <div className="image-circle family" >
-          <Image  style={{height:'auto'}}
+          <Image
             src="https://hfiles.in/wp-content/uploads/2023/03/features-hero-6.png"
             alt="Hero Feature"
             width={600}

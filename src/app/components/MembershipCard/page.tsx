@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, X, User, AlignCenter } from 'lucide-react';
-import Header from '../components/LandingPage/Header';
+import  MasterHeader from '../components/LandingPage/MasterHome';
 import Link from 'next/link';
 
 const MembershipCard = () => {
