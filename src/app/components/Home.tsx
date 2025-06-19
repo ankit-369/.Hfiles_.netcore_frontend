@@ -19,7 +19,7 @@ const Home: React.FC<HomeProps> = ({ children }) => {
           isMenuOpen ? 'blur-sm pointer-events-none' : ''
         } overflow-y-auto`}
       >
-        <div className="max-w-7xl mx-auto w-full">
+        <div className="min-w-7xl mx-auto w-full">
           {children}
         </div>
       </main>

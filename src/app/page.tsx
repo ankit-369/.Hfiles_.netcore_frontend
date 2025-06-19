@@ -14,6 +14,7 @@ import Articles from './components/LandingPage/Articles';
 import TalkToUs from './components/LandingPage/TalkToUs';
 import HandshakeSection from './components/LandingPage/HandshakeSection';
 import Footer from './components/LandingPage/Footer';
+import "./styles/index4.css";
 
 export default function HomePage() {
   return (

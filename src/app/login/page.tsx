@@ -304,7 +304,7 @@ const handleLogin = async () => {
               <div className="text-center">
                 <span className="text-white">
                   New User? Click{' '}
-                  <a href="/Signup" className="text-yellow-400 hover:text-yellow-300 font-semibold">
+                  <a href="/signUp" className="text-yellow-400 hover:text-yellow-300 font-semibold">
                     here
                   </a>{' '}
                   to Sign Up

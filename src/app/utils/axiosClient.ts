@@ -51,12 +51,6 @@ const axiosInstance = axios.create({
   baseURL: " https://localhost:44358/api/", // Change if needed
 });
 
-// https://localhost:44358/api/OtpLogin/send-otp
-// Axios Instance
-const axiosInstance = axios.create({
-  baseURL: " https://localhost:44358/api/", // Change if needed
-});
-
 // Attach interceptors
 axiosInstance.interceptors.request.use(requestHandler);
 axiosInstance.interceptors.response.use(successHandler, errorHandler);

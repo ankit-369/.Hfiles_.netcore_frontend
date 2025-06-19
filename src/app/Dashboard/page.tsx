@@ -8,7 +8,7 @@ import MasterHome from '../components/MasterHome';
 function Dashboard() {
   const userName = 'Rahul';
 
-  const navigateTo = (path) => {
+  const navigateTo = (path: string) => {
     // In a real Next.js app, you would use: router.push(path)
     // For demo purposes, we'll use window.location or you can replace with your navigation logic
     console.log(`Navigating to: ${path}`);

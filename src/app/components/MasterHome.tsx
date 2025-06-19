@@ -12,7 +12,7 @@ const MasterHome: React.FC<HomeProps> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="flex flex-col min-h-screen relative">
+    <div className="h-screen flex flex-col">
       <MasterHeader isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
 
       <main
@@ -20,7 +20,7 @@ const MasterHome: React.FC<HomeProps> = ({ children }) => {
           isMenuOpen ? 'blur-sm pointer-events-none' : ''
         }`}
       >
-        <div className="max-w-screen-xl mx-auto px-4 py-6" style={{ width: '100%', maxWidth: '100%'}}>
+        <div className="flex-grow overflow-y-auto custom-scrollbar">
           {children}
         </div>
       </main>
