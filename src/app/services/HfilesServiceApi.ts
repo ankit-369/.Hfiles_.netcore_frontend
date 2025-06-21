@@ -20,3 +20,6 @@ export const UserSignUpOtp = async (data: any) => {
 export const UserSignUpOtpSubmit = async (data: any) => {
   return axios.post(`${endpoints.Lab_Reports.SignUpotpSubmit}`, data);
 };
+export const UserSignUpResendotp = async (data: any) => {
+  return axios.post(`${endpoints.Lab_Reports.SignUpResendotp}`, data);
+};

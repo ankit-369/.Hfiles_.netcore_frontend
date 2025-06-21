@@ -5,7 +5,7 @@ import { Eye, EyeOff, User, Calendar, Mail, Lock, Phone, ArrowLeft, Menu } from 
 import Image from 'next/image';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { SignUp1, UserSignUp, UserSignUpOtp, UserSignUpOtpSubmit } from '../services/HfilesServiceApi';
+import { SignUp1, UserSignUp, UserSignUpOtp, UserSignUpOtpSubmit, UserSignUpResendotp } from '../services/HfilesServiceApi';
 import Home from '../components/Home';
 
 const SignUp = () => {
@@ -30,6 +30,28 @@ const SignUp = () => {
     { code: '+33', country: 'France', display: 'FR +33' }
   ];
 
+  // Date formatting handler for yyyy-mm-dd format
+  const handleDateChange = (e) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    
+    if (value.length >= 4) {
+      value = value.substring(0, 4) + '-' + value.substring(4);
+    }
+    if (value.length >= 7) {
+      value = value.substring(0, 7) + '-' + value.substring(7, 9);
+    }
+    
+    formik.setFieldValue('dob', value);
+  };
+
+  // Phone number formatting handler
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+    if (value.length <= 10) {
+      formik.setFieldValue('phone', value);
+    }
+  };
+
   // Yup validation schema
   const validationSchema = Yup.object({
     firstName: Yup.string()
@@ -38,7 +60,7 @@ const SignUp = () => {
     lastName: Yup.string()
       .required('Last name is required'),
     dob: Yup.string()
-      .matches(/^\d{2}-\d{2}-\d{4}$/, 'Please enter DOB in dd-mm-yyyy format')
+      .matches(/^\d{4}-\d{2}-\d{2}$/, 'Please enter DOB in yyyy-mm-dd format')
       .required('Date of birth is required'),
     countryCode: Yup.string()
       .required('Country code is required'),
@@ -82,27 +104,22 @@ const SignUp = () => {
     onSubmit: async (values) => {
       setIsSubmitting(true);
       try {
-        // Format date for API (dd-mm-yyyy to yyyy-mm-dd)
-        const formatDateForApi = (dateStr) => {
-          const [day, month, year] = dateStr.split('-');
-          return `${year}-${month}-${day}`;
-        };
-
         const payload = {
           email: values.email,
           firstName: values.firstName,
           lastName: values.lastName,
           phone: values.phone,
           countryCode: values.countryCode,
-          dateOfBirth: formatDateForApi(values.dob),
+          dateOfBirth: values.dob,
           password: values.password,
           confirmPassword: values.confirmPassword
         };
 
-        console.log('Signup Payload:', payload);
+        console.log('🚀 Signup Payload:', payload);
 
+        // Enhanced API call with better error handling
         const response = await UserSignUp(payload);
-        console.log('API Response:', response);
+        console.log('✅ API Response:', response);
 
         // If API call is successful, show OTP section
         setShowOtpSection(true);
@@ -112,7 +129,27 @@ const SignUp = () => {
         alert('Registration successful! Please check your email for OTP.');
 
       } catch (error) {
-        console.error('Signup API failed:', error);
+        console.error('❌ Signup API failed:', error);
+        
+        // Enhanced error handling with user-friendly messages
+        if (error.code === 'ERR_NETWORK') {
+          alert('❌ Network Error: Unable to connect to server. Please check:\n\n' +
+                '• Your internet connection\n' +
+                '• API server is running\n' +
+                '• API URL is correct\n\n' +
+                'Check browser console for details.');
+        } else if (error.response) {
+          // Server responded with error status
+          const status = error.response.status;
+          const message = error.response.data?.message || 'Server error occurred';
+          alert(`❌ Server Error (${status}): ${message}`);
+        } else if (error.request) {
+          // Request was made but no response received
+          alert('❌ No response from server. Please check if the server is running.');
+        } else {
+          // Something else happened
+          alert(`❌ Error: ${error.message}`);
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -137,53 +174,191 @@ const SignUp = () => {
     }
   }, [captchaCode]);
 
+  // SIMPLIFIED SINGLE-CALL APPROACH (NO SESSION DEPENDENCY)
   const handleOtpSubmit = async (e) => {
-    debugger
     e.preventDefault();
     setOtpError('');
     setIsOtpSubmitting(true);
-
+    
+    // Validate OTP length
     if (otp.length !== 6) {
       setOtpError('Please enter valid 6-digit OTP');
       setIsOtpSubmitting(false);
       return;
     }
-
+    
     try {
-      // Prepare the OTP verification payload
-      const otpPayload = {
-        email: formik.values.email,
-        otp: otp
-      };
-
-      console.log('OTP Verification Payload:', otpPayload);
-
-      // Call the OTP verification API
-      const response = await UserSignUpOtpSubmit(otpPayload);
-      console.log('OTP Verification Response:', response);
-
-      // Handle successful verification
-      alert('Registration completed successfully!');
-
-      // Redirect to login page or dashboard
-      // window.location.href = '/login';
-      // or use your routing method
-
+      console.log('🎯 Direct registration with OTP verification...');
+      
+      // Single API call with OTP included
+      const registrationResponse = await fetch('https://localhost:44358/api/Signup/complete', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: formik.values.email,
+          firstName: formik.values.firstName,
+          lastName: formik.values.lastName,
+          phone: formik.values.phone,
+          countryCode: formik.values.countryCode,
+          dateOfBirth: formik.values.dob,
+          password: formik.values.password,
+          confirmPassword: formik.values.confirmPassword,
+          otp: otp // Include OTP for direct verification
+        })
+      });
+      
+      if (!registrationResponse.ok) {
+        const errorData = await registrationResponse.json();
+        console.error('❌ Registration failed:', errorData);
+        throw new Error(errorData.Message || errorData.message || 'Registration failed');
+      }
+      
+      const registrationData = await registrationResponse.json();
+      console.log('✅ Registration Response:', registrationData);
+      
+      if (registrationData.Success || registrationData.success) {
+        console.log('🎉 Registration completed successfully!');
+        alert('🎉 Registration completed successfully! Welcome!');
+        
+        // Reset form and hide OTP section
+        setOtp('');
+        setShowOtpSection(false);
+        
+        // Optionally redirect to login page
+        // router.push('/login');
+        
+      } else {
+        throw new Error(registrationData.Message || registrationData.message || 'Registration failed');
+      }
+      
     } catch (error) {
-      console.error('OTP Verification failed:', error);
-      setOtpError('Invalid OTP. Please try again.');
+      console.error('❌ Registration process failed:', error);
+      
+      let errorMessage = 'Registration failed. ';
+      
+      if (error.message.includes('Invalid OTP')) {
+        errorMessage = 'Invalid OTP. Please check and try again.';
+      } else if (error.message) {
+        errorMessage += error.message;
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      setOtpError(errorMessage);
+      
     } finally {
       setIsOtpSubmitting(false);
     }
   };
 
-  const resendOtp = () => {
-    setTimer(60);
-    setOtpError('');
-    setOtp('');
-    console.log('Resending OTP...');
-    alert('OTP resent successfully!');
-  };
+ // Improved resendOtp function for your React component
+
+// Improved resendOtp function for your React component
+
+const resendOtp = async () => {
+  try {
+    setIsOtpSubmitting(true);
+    setOtpError(''); // Clear any previous errors
+    
+    // Validate email exists
+    if (!formik.values.email) {
+      setOtpError('Email is required to resend OTP');
+      return;
+    }
+
+    const resendPayload = {
+      email: formik.values.email
+    };
+
+    console.log('🔄 Resending OTP...');
+    console.log('📧 Resend OTP Payload:', resendPayload);
+
+    // Call the resend OTP API
+    const response = await UserSignUpResendotp(resendPayload);
+    console.log('✅ Resend OTP Response:', response);
+
+    // Check if the response indicates success (matches your ApiResponseDto)
+    if (response.Success) {
+      // Reset timer and clear OTP input
+      setTimer(60);
+      setOtpError('');
+      setOtp('');
+      
+      // Show success message using the actual response message
+      alert(`✅ ${response.Message || 'OTP resent successfully! Please check your email.'}`);
+    } else {
+      throw new Error(response.Message || 'Failed to resend OTP');
+    }
+
+  } catch (error) {
+    console.error('❌ Resend OTP failed:', error);
+    
+    // Enhanced error handling for your specific controller responses
+    let errorMessage = '';
+    
+    if (error.message.includes('Please wait 1 minute')) {
+      errorMessage = '⏱️ Please wait 1 minute before requesting another OTP.';
+      setTimer(60); // Set timer to show remaining time
+    } else if (error.message.includes('Valid email address is required')) {
+      errorMessage = '📧 Please enter a valid email address.';
+    } else if (error.message.includes('Network Error') || error.code === 'ERR_NETWORK') {
+      errorMessage = '🌐 Network error. Please check your internet connection.';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = '⏰ Request timed out. Please try again.';
+    } else if (error.response?.status === 400) {
+      errorMessage = `❌ ${error.message}`;
+    } else if (error.response?.status === 500) {
+      errorMessage = '🔧 Server error. Please try again later.';
+    } else {
+      errorMessage = `❌ ${error.message || 'Failed to resend OTP. Please try again.'}`;
+    }
+    
+    setOtpError(errorMessage);
+    
+  } finally {
+    setIsOtpSubmitting(false);
+  }
+};
+
+// Also, update your resend button in the JSX to show loading state:
+/*
+{timer === 0 && (
+  <div className="text-center">
+    <button
+      type="button"
+      onClick={resendOtp}
+      disabled={isOtpSubmitting}
+      className={`text-yellow-400 hover:text-yellow-300 underline text-sm ${
+        isOtpSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+      }`}
+    >
+      {isOtpSubmitting ? 'Resending...' : 'Resend OTP'}
+    </button>
+  </div>
+)}
+*/
+
+// Also, update your resend button in the JSX to show loading state:
+/*
+{timer === 0 && (
+  <div className="text-center">
+    <button
+      type="button"
+      onClick={resendOtp}
+      disabled={isOtpSubmitting}
+      className={`text-yellow-400 hover:text-yellow-300 underline text-sm ${
+        isOtpSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+      }`}
+    >
+      {isOtpSubmitting ? 'Resending...' : 'Resend OTP'}
+    </button>
+  </div>
+)}
+*/
 
   const refreshCaptcha = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -204,7 +379,7 @@ const SignUp = () => {
 
   return (
     <Home>
-    <div className="min-h-auto">
+    <div className="min-h-auto" style={{ maxWidth: '100%' }}>
       {/* Main Content */}
       <div className="flex flex-col md:flex-row ">
         {/* Left Side - Image (Hidden on Mobile) */}
@@ -264,9 +439,14 @@ const SignUp = () => {
                       type="text"
                       name="firstName"
                       value={formik.values.firstName}
-                      onChange={formik.handleChange}
+                      onChange={(e) => {
+                        // Only allow letters and spaces
+                        const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                        formik.setFieldValue('firstName', value);
+                      }}
                       onBlur={formik.handleBlur}
                       placeholder="First Name"
+                      maxLength="50"
                       className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
                     />
                     {formik.touched.firstName && formik.errors.firstName && (
@@ -281,9 +461,14 @@ const SignUp = () => {
                       type="text"
                       name="lastName"
                       value={formik.values.lastName}
-                      onChange={formik.handleChange}
+                      onChange={(e) => {
+                        // Only allow letters and spaces
+                        const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                        formik.setFieldValue('lastName', value);
+                      }}
                       onBlur={formik.handleBlur}
                       placeholder="Last Name"
+                      maxLength="50"
                       className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
                     />
                     {formik.touched.lastName && formik.errors.lastName && (
@@ -298,9 +483,10 @@ const SignUp = () => {
                       type="text"
                       name="dob"
                       value={formik.values.dob}
-                      onChange={formik.handleChange}
+                      onChange={handleDateChange}
                       onBlur={formik.handleBlur}
-                      placeholder="dd-mm-yyyy"
+                      placeholder="yyyy-mm-dd"
+                      maxLength="10"
                       className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
                     />
                     {formik.touched.dob && formik.errors.dob && (
@@ -308,7 +494,7 @@ const SignUp = () => {
                     )}
                   </div>
 
-                  {/* Phone Number - Merged Input */}
+                  {/* Phone Number */}
                   <div className="relative bg-white rounded-full border border-gray-300 focus-within:ring-2 focus-within:ring-yellow-400 focus-within:border-transparent overflow-hidden">
                     <div className="flex items-center">
                       <select
@@ -330,15 +516,18 @@ const SignUp = () => {
                         type="tel"
                         name="phone"
                         value={formik.values.phone}
-                        onChange={formik.handleChange}
+                        onChange={handlePhoneChange}
                         onBlur={formik.handleBlur}
                         placeholder="Phone No"
+                        maxLength="10"
                         className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700"
                       />
                     </div>
-                    {formik.touched.phone && formik.errors.phone && (
-                      <p className="text-red-300 text-xs mt-1 ml-4">{formik.errors.phone}</p>
-                    )}
+                    {(formik.touched.phone && formik.errors.phone) || (formik.touched.countryCode && formik.errors.countryCode) ? (
+                      <p className="text-red-300 text-xs mt-1 ml-4">
+                        {formik.errors.phone || formik.errors.countryCode}
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Email */}
@@ -349,7 +538,10 @@ const SignUp = () => {
                       name="email"
                       value={formik.values.email}
                       onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
+                      onBlur={(e) => {
+                        formik.setFieldValue('email', e.target.value.trim().toLowerCase());
+                        formik.handleBlur(e);
+                      }}
                       placeholder="Email ID"
                       className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
                     />
@@ -409,7 +601,7 @@ const SignUp = () => {
                   </div>
                 </div>
 
-                {/* Captcha - Always Visible */}
+                {/* Captcha */}
                 <div className="text-center space-y-3">
                   <div
                     className="bg-white p-4 rounded-lg inline-block border-2 border-gray-300 cursor-pointer hover:bg-gray-50 shadow-sm"
@@ -433,7 +625,7 @@ const SignUp = () => {
                   )}
                 </div>
 
-                {/* Terms and Conditions - Always Visible */}
+                {/* Terms and Conditions */}
                 <div className="flex items-center justify-center space-x-2">
                   <input
                     type="checkbox"

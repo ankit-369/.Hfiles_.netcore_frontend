@@ -1,2 +1,8 @@
 @import "tailwindcss";
 
+
+.custom-inline-padding {
+  padding-inline: calc(var(--spacing) * 30) !important;
+}
+
+

@@ -19,7 +19,8 @@ export const endpoints = {
          Loginwithotp: API_Lab_Reports + "OtpLogin/send-otp",
          SignUpStart: API_Lab_Reports + "Signup/initiate",
          SignUpotp: API_Lab_Reports + "Signup/verify-otp",
-          SignUpotpSubmit: API_Lab_Reports + "Signup/complete"
+          SignUpotpSubmit: API_Lab_Reports + "Signup/complete",
+          SignUpResendotp: API_Lab_Reports + "Signup/resend-otp"
     },
 }
 

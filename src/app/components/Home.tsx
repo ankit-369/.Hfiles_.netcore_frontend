@@ -15,11 +15,11 @@ const Home: React.FC<HomeProps> = ({ children }) => {
       <Header isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
 
       <main
-        className={`flex-grow transition duration-300 px-4 md:px-6 lg:px-8 py-6 ${
+        className={`transition duration-300 ${
           isMenuOpen ? 'blur-sm pointer-events-none' : ''
-        } overflow-y-auto`}
+        } `}
       >
-        <div className="max-w-7xl mx-auto w-full">
+        <div className="mx-auto w-full">
           {children}
         </div>
       </main>
