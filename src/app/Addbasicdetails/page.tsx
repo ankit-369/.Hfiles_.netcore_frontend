@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import './addbasicdetails.css';
 
 interface FormData {
   firstName: string;
@@ -29,7 +28,7 @@ interface City {
   name: string;
 }
 
-const AddBasicDetails: React.FC = () => {
+const addbasicdetails: React.FC = () => {
   const router = useRouter();
 
   const [formData, setFormData] = useState<FormData>({
@@ -184,12 +183,6 @@ const AddBasicDetails: React.FC = () => {
     }
   };
 
-  const formatDateForDisplay = (date: string) => {
-    if (!date) return '';
-    const [year, month, day] = date.split('-');
-    return `${day}-${month}-${year}`;
-  };
-
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -240,283 +233,309 @@ const AddBasicDetails: React.FC = () => {
     fileInput?.click();
   };
 
+  // Field component for consistent styling
+  const FormField: React.FC<{
+    name: string;
+    type?: string;
+    placeholder?: string;
+    icon: string;
+    required?: boolean;
+    maxLength?: number;
+    max?: string;
+    children?: React.ReactNode;
+    hasFlag?: boolean;
+  }> = ({ name, type = 'text', placeholder, icon, required = false, maxLength, max, children, hasFlag = false }) => (
+    <div className="relative mb-4">
+      <div className="relative">
+        <i className={`${icon} absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg`}></i>
+        {children || (
+          <input
+            type={type}
+            name={name}
+            value={formData[name as keyof FormData]}
+            onChange={handleInputChange}
+            className={`w-full ${hasFlag ? 'pl-12 pr-16' : 'pl-12 pr-4'} py-3 border border-gray-300 rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+            placeholder={placeholder}
+            required={required}
+            maxLength={maxLength}
+            max={max}
+          />
+        )}
+      </div>
+      {errors[name] && (
+        <span className="block text-red-500 text-xs mt-1 ml-4">{errors[name]}</span>
+      )}
+    </div>
+  );
+
   return (
-    <div className="user-info-main">
-      <div className="col-md-4 d-flex justify-content-md-start justify-content-start py-1">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
+      {/* Header */}
+      <div className="flex justify-between items-center p-5">
         <button 
-          className="back-arrow-btn-2" 
           onClick={() => router.push('/Dashboard')}
+          className="text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200"
         >
           Back to Home
         </button>
+        <div className="text-right">
+          <span className="text-gray-800 font-medium">rahul</span>
+        </div>
       </div>
 
-      <div className="container">
-        <Image 
-          className="plus-top-left" 
-          src="/assets/plus-1.png" 
-          alt="Plus decoration"
-          width={50}
-          height={50}
-        />
-
-        <div className="profile-container">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
           {/* Profile Image Section */}
-          <div className="profile-img">
-            <div className="profile-ring">
-              <Image
-                id="imagePreview"
-                src={profileImage}
-                alt="Profile"
-                width={200}
-                height={200}
-                className="profile-image"
-              />
+          <div className="w-full lg:w-auto lg:min-w-[400px] flex flex-col items-center">
+            {/* Profile Image */}
+            <div className="mb-6 relative">
+              <div className="w-48 h-48 rounded-full border-4 border-yellow-400 p-1 bg-white shadow-lg">
+                <Image
+                  id="imagePreview"
+                  src={profileImage}
+                  alt="Profile"
+                  width={180}
+                  height={180}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              </div>
             </div>
             
-            <div className="Addbasicbtnboth">
-              <button 
-                className="button-change" 
-                onClick={showFileUpload}
-              >
-                Change Profile Image
-              </button>
-              <input
-                id="profileUpload"
-                type="file"
-                accept=".png,.jpg,.jpeg"
-                onChange={handleImageChange}
-                style={{ display: 'none' }}
-              />
-            </div>
+            {/* Change Image Button */}
+            <button 
+              onClick={showFileUpload}
+              className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
+            >
+              Change Profile Image
+            </button>
+            <input
+              id="profileUpload"
+              type="file"
+              accept=".png,.jpg,.jpeg"
+              onChange={handleImageChange}
+              className="hidden"
+            />
           </div>
 
           {/* Form Section */}
-          <div className="profile_subcontainer">
-            <div className="profile_heading">
-              <p>Ready to manage your health? Let's get you set up!</p>
-              <span>Fill in your details to kickstart your health journey</span>
-              <div className="profile_heading_divider"></div>
+          <div className="flex-1 w-full max-w-5xl">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-2xl lg:text-3xl font-bold text-blue-700 mb-3">
+                Ready to manage your health? Let's get you set up!
+              </h1>
+              <p className="text-gray-600 text-base">
+                Fill in your details to kickstart your health journey
+              </p>
+              <div className="w-20 h-1 bg-blue-400 mx-auto mt-4 rounded-full"></div>
             </div>
 
-            <form onSubmit={handleSubmit} className="signin-form form-group has-search">
-              {/* Left Column - 5 Fields */}
-              <div className="profile-details-1">
-                {/* First Name */}
-                <div className="col-12">
-                  <i className="fa-solid fa-circle-user form-control-feedback"></i>
-                  <input
-                    type="text"
+            <form onSubmit={handleSubmit}>
+              {/* Form Fields Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  <FormField
                     name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className="form-control"
-                    placeholder="First Name"
-                    style={{ color: '#707070' }}
+                    placeholder="rahul"
+                    icon="fa-solid fa-user"
                     required
                   />
-                  {errors.firstName && <span className="error-text">{errors.firstName}</span>}
-                </div>
 
-                {/* Last Name */}
-                <div className="col-12">
-                  <i className="fa-solid fa-circle-user form-control-feedback"></i>
-                  <input
-                    type="text"
+                  <FormField
                     name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className="form-control"
-                    placeholder="Last Name"
-                    style={{ color: '#707070' }}
+                    placeholder="sinha"
+                    icon="fa-solid fa-user"
                     required
                   />
-                  {errors.lastName && <span className="error-text">{errors.lastName}</span>}
-                </div>
 
-                {/* Date of Birth */}
-                <div className="col-12">
-                  <i className="fa-solid fa-cake-candles form-control-feedback"></i>
-                  <input
-                    type="date"
+                  <FormField
                     name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    className="form-control"
-                    style={{ color: '#707070' }}
+                    type="date"
+                    placeholder="15-12-1997"
+                    icon="fa-solid fa-calendar-days"
+                    required
                     max={new Date().toISOString().split('T')[0]}
-                    required
                   />
-                  {errors.dateOfBirth && <span className="error-text">{errors.dateOfBirth}</span>}
-                </div>
 
-                {/* Phone */}
-                <div className="col-12 input-wrapper">
-                  <i className="fa-solid fa-phone-volume form-control-feedback"></i>
-                  <input
-                    type="tel"
+                  {/* Contact Number with Flag */}
+                  <FormField
                     name="contactNumber"
-                    value={formData.contactNumber}
-                    onChange={handleInputChange}
-                    className="form-control"
-                    placeholder="Contact Number"
-                    style={{ color: '#707070' }}
+                    type="tel"
+                    placeholder="+91 8007341147"
+                    icon="fa-solid fa-phone"
                     required
-                  />
-                  <Image 
-                    className="country-flag"
-                    src="/assets/india-flag.png"
-                    alt="India flag"
-                    width={25}
-                    height={18}
-                  />
-                  {errors.contactNumber && <span className="error-text">{errors.contactNumber}</span>}
-                </div>
+                    maxLength={10}
+                    hasFlag={true}
+                  >
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        name="contactNumber"
+                        value={formData.contactNumber}
+                        onChange={handleInputChange}
+                        className="w-full pl-12 pr-16 py-3 border border-gray-300 rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                        placeholder="+91 8007341147"
+                        required
+                        maxLength={10}
+                      />
+                      <Image 
+                        src="/assets/india-flag.png"
+                        alt="India flag"
+                        width={24}
+                        height={16}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2"
+                      />
+                    </div>
+                  </FormField>
 
-                {/* Email */}
-                <div className="col-12">
-                  <i className="fa-solid fa-envelope form-control-feedback"></i>
-                  <input
-                    type="email"
+                  <FormField
                     name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="form-control"
-                    placeholder="Email ID"
-                    style={{ color: '#707070' }}
+                    type="email"
+                    placeholder="kamleshfiles2024@gmail.com"
+                    icon="fa-solid fa-envelope"
                     required
                   />
-                  {errors.email && <span className="error-text">{errors.email}</span>}
                 </div>
-              </div>
 
-              {/* Right Column - 6 Fields */}
-              <div className="profile-details-2">
-                {/* Gender */}
-                <div className="col-12">
-                  <i className="fa-solid fa-venus-mars form-control-feedback"></i>
-                  <select
+                {/* Right Column */}
+                <div className="space-y-4">
+                  {/* Gender */}
+                  <FormField
                     name="gender"
-                    value={formData.gender}
-                    onChange={handleInputChange}
-                    className="form-select form-control mySelect"
-                    style={{ color: 'blue' }}
+                    icon="fa-solid fa-venus-mars"
                     required
                   >
-                    <option value="" disabled>Select Gender</option>
-                    <option value="1">Male</option>
-                    <option value="2">Female</option>
-                    <option value="3">Others</option>
-                  </select>
-                  {errors.gender && <span className="error-text">{errors.gender}</span>}
-                </div>
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
+                        formData.gender ? 'text-gray-700' : 'text-gray-400'
+                      }`}
+                      required
+                    >
+                      <option value="" disabled>Male</option>
+                      <option value="1">Male</option>
+                      <option value="2">Female</option>
+                      <option value="3">Others</option>
+                    </select>
+                  </FormField>
 
-                {/* Blood Group */}
-                <div className="col-12">
-                  <i className="fa-sharp fa-solid fa-droplet form-control-feedback"></i>
-                  <select
+                  {/* Blood Group */}
+                  <FormField
                     name="bloodGroup"
-                    value={formData.bloodGroup}
-                    onChange={handleInputChange}
-                    className="form-select form-control mySelect"
+                    icon="fa-solid fa-droplet"
                   >
-                    <option value="0">Blood Group</option>
-                    <option value="1">A+</option>
-                    <option value="2">A-</option>
-                    <option value="3">B+</option>
-                    <option value="4">B-</option>
-                    <option value="5">AB+</option>
-                    <option value="6">AB-</option>
-                    <option value="7">O+</option>
-                    <option value="8">O-</option>
-                  </select>
-                </div>
+                    <select
+                      name="bloodGroup"
+                      value={formData.bloodGroup}
+                      onChange={handleInputChange}
+                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
+                        formData.bloodGroup && formData.bloodGroup !== '0' ? 'text-gray-700' : 'text-gray-400'
+                      }`}
+                    >
+                      <option value="0">A+</option>
+                      <option value="1">A+</option>
+                      <option value="2">A-</option>
+                      <option value="3">B+</option>
+                      <option value="4">B-</option>
+                      <option value="5">AB+</option>
+                      <option value="6">AB-</option>
+                      <option value="7">O+</option>
+                      <option value="8">O-</option>
+                    </select>
+                  </FormField>
 
-                {/* Pincode */}
-                <div className="col-12">
-                  <i className="fa-solid fa-map-pin form-control-feedback"></i>
-                  <input
-                    type="text"
+                  <FormField
                     name="pincode"
-                    value={formData.pincode}
-                    onChange={handleInputChange}
-                    className="form-control pincode-input"
-                    placeholder="Pincode"
+                    placeholder="400020"
+                    icon="fa-solid fa-location-dot"
                     maxLength={6}
                   />
-                  {errors.pincode && <span className="pincode-input-error">{errors.pincode}</span>}
-                </div>
 
-                {/* State */}
-                <div className="col-12">
-                  <i className="fa-solid fa-map-location-dot form-control-feedback"></i>
-                  <select
+                  {/* State */}
+                  <FormField
                     name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    className="form-select form-control mySelect"
+                    icon="fa-solid fa-map-location-dot"
                     required
                   >
-                    {states.map(state => (
-                      <option key={state.id} value={state.id}>{state.name}</option>
-                    ))}
-                  </select>
-                  {errors.state && <span className="error-text">{errors.state}</span>}
-                </div>
+                    <select
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
+                        formData.state && formData.state !== '0' ? 'text-gray-700' : 'text-gray-400'
+                      }`}
+                      required
+                    >
+                      <option value="14">MAHARASHTRA</option>
+                      {states.map(state => (
+                        <option key={state.id} value={state.id}>{state.name}</option>
+                      ))}
+                    </select>
+                  </FormField>
 
-                {/* City */}
-                <div className="col-12">
-                  <i className="fa-sharp fa-solid fa-city form-control-feedback"></i>
-                  <select
+                  {/* City */}
+                  <FormField
                     name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="form-select form-control mySelect"
+                    icon="fa-solid fa-city"
                     required
                   >
-                    {cities.map(city => (
-                      <option key={city.id} value={city.id}>{city.name}</option>
-                    ))}
-                  </select>
-                  {errors.city && <span className="error-text">{errors.city}</span>}
-                </div>
+                    <select
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
+                        formData.city && formData.city !== '0' ? 'text-gray-700' : 'text-gray-400'
+                      }`}
+                      required
+                    >
+                      <option value="1">Mumbai</option>
+                      {cities.map(city => (
+                        <option key={city.id} value={city.id}>{city.name}</option>
+                      ))}
+                    </select>
+                  </FormField>
 
-                {/* Emergency Contact */}
-                <div className="col-12">
-                  <i className="fa-solid fa-phone-volume form-control-feedback"></i>
-                  <input
-                    type="tel"
+                  <FormField
                     name="emergencyContact"
-                    value={formData.emergencyContact}
-                    onChange={handleInputChange}
-                    className="form-control"
+                    type="tel"
                     placeholder="Emergency Contact Number"
+                    icon="fa-solid fa-phone"
                     maxLength={10}
                   />
                 </div>
               </div>
+
+              {/* Buttons */}
+              <div className="flex flex-col items-center space-y-4 mt-8">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold py-4 px-16 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[200px] ${
+                    loading ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {loading ? 'Updating...' : 'Update'}
+                </button>
+
+                <a 
+                  href="/change-password" 
+                  className="text-center text-sm hover:underline transition-all duration-200"
+                >
+                  <span className="text-gray-600">Click Here to </span>
+                  <span className="text-blue-700 font-semibold underline">Change Password</span>
+                </a>
+              </div>
+
+              {/* General Error */}
+              {errors.general && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
+                  {errors.general}
+                </div>
+              )}
             </form>
-
-            {/* Buttons */}
-            <div className="profile_buttons">
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                className="update-button"
-                disabled={loading}
-              >
-                {loading ? 'Updating...' : 'Update'}
-              </button>
-
-              <a href="/change-password" className="change-password-link">
-                <span className="click-text">Click Here to </span>
-                <span className="password-text">Change Password</span>
-              </a>
-            </div>
-
-            {errors.general && (
-              <div className="general-error">{errors.general}</div>
-            )}
           </div>
         </div>
       </div>
@@ -524,4 +543,4 @@ const AddBasicDetails: React.FC = () => {
   );
 };
 
-export default AddBasicDetails;
+export default addbasicdetails;

@@ -23,6 +23,7 @@ export const endpoints = {
              abhaadharno: API_Lab_Reports + "abha/request-otp",
               abhaadharotpverify: API_Lab_Reports + "abha/verify-otp",
               abhacarddownload: API_Lab_Reports + "abha/download-card",
+          SignUpResendotp: API_Lab_Reports + "Signup/resend-otp"
     },
     
 }

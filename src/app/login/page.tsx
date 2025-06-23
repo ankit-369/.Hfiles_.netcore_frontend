@@ -158,10 +158,7 @@ const handleLogin = async () => {
     <Home>
       <div className="flex flex-col">
         {/* Main Content */}
-        <div className="flex flex-1 w-screen bg-gray-100" style={{
-    marginLeft: "-341px",
-    marginInlineEnd: "auto"
-  }}>
+        <div className="flex flex-1 w-screen bg-gray-100">
           {/* Left Side - Image */}
           <div className="hidden lg:flex lg:w-1/2 p-8 items-center justify-center">
             <img
@@ -195,7 +192,7 @@ const handleLogin = async () => {
                   value={formData.emailOrPhone}
                   onChange={handleInputChange}
                   placeholder="Email Id / Contact No."
-                  className="w-full px-6 py-3 rounded-full border-none outline-none bg-white"
+                  className="w-full px-6 py-3 rounded-full border-none outline-none bg-white custom-inline-padding"
                   required
                 />
               </div>

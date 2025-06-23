@@ -28,4 +28,6 @@ export const AbhaAdharCardOtpVerify = async (data: any) => {
 };
 export const AbhaCarddownload = async (data: any) => {
   return axios.post(`${endpoints.Lab_Reports.abhacarddownload}`, data);
+export const UserSignUpResendotp = async (data: any) => {
+  return axios.post(`${endpoints.Lab_Reports.SignUpResendotp}`, data);
 };

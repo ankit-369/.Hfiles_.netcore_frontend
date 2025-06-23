@@ -32,10 +32,14 @@ const MasterHeader = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    // Add your logout logic here
-    console.log('Logging out...');
-    navigateTo('/login');
+  // const handleLogout = () => {
+  //   // Add your logout logic here
+  //   console.log('Logging out...');
+  //   navigateTo('/login');
+  // };
+   const handleLogout = () => {
+    localStorage.removeItem('token'); // Or sessionStorage, or cookies
+    router.push('/login');
   };
 
   const getSubscriptionRingClass = (type) => {
