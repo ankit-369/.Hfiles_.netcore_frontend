@@ -1,58 +1,59 @@
-// src/utils/axiosClient.ts
 import axios from "axios";
 import { toast } from "react-toastify";
+import { decryptData } from "./webCrypto";
 
-// Get token from localStorage
-const getUserToken = () => {
-  return localStorage.getItem("authToken");
-};
+const getUserToken = async () => {
+  const encryptedToken = localStorage.getItem("authToken");
+  if (!encryptedToken) return null;
 
-// Request Interceptor
-const requestHandler = (request : any) => {
-  document.body.classList.add("loading-indicator");
-
-  const token = getUserToken();
-  if (token) {
-    request.headers["Authorization"] = `Bearer ${token}`;
+  try {
+    const decryptedToken = await decryptData(encryptedToken);
+    return decryptedToken;
+  } catch {
+    return null;
   }
-
-  return request;
 };
 
-// Response Interceptor (Success)
-const successHandler = (response : any) => {
-  document.body.classList.remove("loading-indicator");
-  return response;
-};
-
-
-const errorHandler = (error: any) => {
-  document.body.classList.remove("loading-indicator");
-
-  const status = error?.response?.status;
-  const message = error?.response?.data?.message || "Something went wrong";
-
-  if (status === 401) {
-    // Unauthorized - clear all relevant storage and redirect
-   
-    window.location.href = "/labLogin";
-  } else if (status === 404) {
-    toast.error(message);
-  } else {
-    toast.error(message);
-  }
-
-  return Promise.reject({ ...error });
-};
-
-// https://localhost:44358/api/Login
-// Axios Instance
 const axiosInstance = axios.create({
-  baseURL: " https://localhost:44358/api/", // Change if needed
+  baseURL: "https://localhost:44358/api/",
 });
 
-// Attach interceptors
-axiosInstance.interceptors.request.use(requestHandler);
-axiosInstance.interceptors.response.use(successHandler, errorHandler);
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    document.body.classList.add("loading-indicator");
+
+    const token = await getUserToken();
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    document.body.classList.remove("loading-indicator");
+    return Promise.reject(error);
+  }
+);
+
+axiosInstance.interceptors.response.use(
+  (response) => {
+    document.body.classList.remove("loading-indicator");
+    return response;
+  },
+  (error) => {
+    document.body.classList.remove("loading-indicator");
+
+    const status = error?.response?.status;
+    const message = error?.response?.data?.message || "Something went wrong";
+
+    if (status === 401) {
+      window.location.href = "/";
+    } else {
+      toast.error(message);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default axiosInstance;

@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-
-.custom-inline-padding {
-  padding-inline: calc(var(--spacing) * 30) !important;
+.primary {
+  background-image: linear-gradient(to right, #0331B5, #0B2B86);
 }
-
-

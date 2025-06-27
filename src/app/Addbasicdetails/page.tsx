@@ -1,14 +1,19 @@
 'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { BasicDetailsList, ListFlag, OTPSend, VerigyOTps, ListPincode, listCounty, AddProfile, OTpVerifyMember, OTpSubmitMember } from '../services/HfilesServiceApi';
+import { decryptData } from '../utils/webCrypto';
+import MasterHome from '../components/MasterHome';
+import { toast } from 'react-toastify';
 
 interface FormData {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
   contactNumber: string;
+  countryCode: string;
   email: string;
   gender: string;
   bloodGroup: string;
@@ -16,6 +21,7 @@ interface FormData {
   state: string;
   city: string;
   emergencyContact: string;
+  emergencyCountryCode: string;
 }
 
 interface State {
@@ -28,203 +34,635 @@ interface City {
   name: string;
 }
 
-const addbasicdetails: React.FC = () => {
+const validationSchema = Yup.object({
+  firstName: Yup.string()
+    .matches(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces')
+    .required('First name is required')
+    .trim(),
+
+  lastName: Yup.string()
+    .matches(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces')
+    .required('Last name is required')
+    .trim(),
+
+  dateOfBirth: Yup.date()
+    .required('Date of birth is required')
+    .max(new Date(), 'Date of birth cannot be in the future'),
+
+  contactNumber: Yup.string()
+    .matches(/^[0-9]{10}$/, 'Contact number must be exactly 10 digits')
+    .required('Contact number is required'),
+
+  countryCode: Yup.string()
+    .required('Country code is required'),
+
+  email: Yup.string()
+    .matches(
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      "Please enter a valid email address"
+    )
+    .required("Email is required"),
+
+  gender: Yup.string()
+    .required('Gender is required')
+    .notOneOf([''], 'Please select a gender'),
+
+  bloodGroup: Yup.string()
+    .notRequired(),
+
+  pincode: Yup.string()
+    .matches(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits and cannot start with 0')
+    .notRequired(),
+
+  state: Yup.string()
+    .required('State is required'),
+
+  city: Yup.string()
+    .required('City is required'),
+
+  emergencyContact: Yup.string()
+    .matches(/^[0-9]{10}$/, 'Emergency contact must be exactly 10 digits')
+    .notRequired(),
+
+  emergencyCountryCode: Yup.string()
+    .notRequired()
+});
+
+// OTP Validation Schema
+const otpValidationSchema = Yup.object({
+  otp: Yup.string()
+    .matches(/^[0-9]{6}$/, 'OTP must be exactly 6 digits')
+    .required('OTP is required')
+});
+
+const AddBasicDetails: React.FC = () => {
   const router = useRouter();
-
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    contactNumber: '',
-    email: '',
-    gender: '',
-    bloodGroup: '',
-    pincode: '',
-    state: '',
-    city: '',
-    emergencyContact: ''
-  });
-
-  const [profileImage, setProfileImage] = useState<string>('/assets/default-user-profile.png');
+  const [profileImage, setProfileImage] = useState<string>('/96d6a80ddef94d5b7c78919843c68d25900f7981.png');
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [imageLoading, setImageLoading] = useState<boolean>(false);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(false);
-
-  // Sample states data
-  const statesData: State[] = [
-    { id: '0', name: 'Select State' },
-    { id: '1', name: 'Andhra Pradesh' },
-    { id: '2', name: 'Arunachal Pradesh' },
-    { id: '3', name: 'Assam' },
-    { id: '4', name: 'Bihar' },
-    { id: '5', name: 'Chhattisgarh' },
-    { id: '6', name: 'Goa' },
-    { id: '7', name: 'Gujarat' },
-    { id: '8', name: 'Haryana' },
-    { id: '9', name: 'Himachal Pradesh' },
-    { id: '10', name: 'Jharkhand' },
-    { id: '11', name: 'Karnataka' },
-    { id: '12', name: 'Kerala' },
-    { id: '13', name: 'Madhya Pradesh' },
-    { id: '14', name: 'Maharashtra' },
-    { id: '15', name: 'Manipur' },
-    { id: '16', name: 'Meghalaya' },
-    { id: '17', name: 'Mizoram' },
-    { id: '18', name: 'Nagaland' },
-    { id: '19', name: 'Odisha' },
-    { id: '20', name: 'Punjab' },
-    { id: '21', name: 'Rajasthan' },
-    { id: '22', name: 'Sikkim' },
-    { id: '23', name: 'Tamil Nadu' },
-    { id: '24', name: 'Telangana' },
-    { id: '25', name: 'Tripura' },
-    { id: '26', name: 'Uttar Pradesh' },
-    { id: '27', name: 'Uttarakhand' },
-    { id: '28', name: 'West Bengal' },
-    { id: '29', name: 'Delhi' }
-  ];
-
-  // Sample cities data
-  const citiesData: Record<string, City[]> = {
-    '14': [
-      { id: '0', name: 'Select City' },
-      { id: '1', name: 'Mumbai' },
-      { id: '2', name: 'Pune' },
-      { id: '3', name: 'Nagpur' },
-      { id: '4', name: 'Nashik' },
-      { id: '5', name: 'Aurangabad' },
-      { id: '6', name: 'Solapur' },
-      { id: '7', name: 'Thane' },
-      { id: '8', name: 'Kalyan' }
-    ],
-    '11': [
-      { id: '0', name: 'Select City' },
-      { id: '9', name: 'Bangalore' },
-      { id: '10', name: 'Mysore' },
-      { id: '11', name: 'Hubli' },
-      { id: '12', name: 'Mangalore' }
-    ]
-  };
+  const [listDetails, setListDetails] = useState<any>();
+  const [flagUrl, setFlagUrl] = useState<string | null>(null);
+  const [showOTPModal, setShowOTPModal] = useState<boolean>(false);
+  const [otpLoading, setOtpLoading] = useState<boolean>(false);
+  const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
+  const [userId, setUserId] = useState<number>(0);
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [pincodeLoading, setPincodeLoading] = useState<boolean>(false);
+  const [listCountyCode, setListCountryCode] = useState<any[]>([]);
+  const [isEmailVerified, setIsEmailVerified] = useState<boolean | null>(null);
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
+  const [showOTPPhoneModal, setShowOTPPhoneModal] = useState<boolean>(false);
+  const [oldCountryCode, setOldCountryCode] = useState<string>('');
+  const [oldPhoneNumber, setOldPhoneNumber] = useState<string>('');
+  const [phoneOtpStep, setPhoneOtpStep] = useState<'verify' | 'otp'>('verify');
+  const [phoneOtpLoading, setPhoneOtpLoading] = useState<boolean>(false);
+  const [phoneVerifyLoading, setPhoneVerifyLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    setStates(statesData);
-    // Load cities for initial state
-    if (formData.state && formData.state !== '0') {
-      setCities(citiesData[formData.state] || []);
+    const storedValue = localStorage.getItem('isEmailVerified');
+    const phoneStatus = localStorage.getItem('isPhoneVerified');
+    if (storedValue !== null) {
+      setIsEmailVerified(storedValue === 'true');
     }
+    if (phoneStatus !== null) setIsPhoneVerified(phoneStatus === 'true');
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const otpFormik = useFormik({
+    initialValues: {
+      otp: ''
+    },
+    validationSchema: otpValidationSchema,
+    onSubmit: async (values) => {
+      await handleVerifyOTP(values.otp);
+    }
+  });
+
+  // Phone OTP formik
+  const phoneOtpFormik = useFormik({
+    initialValues: {
+      otp: ''
+    },
+    validationSchema: otpValidationSchema,
+    onSubmit: async (values) => {
+      await handleVerifyPhoneOTP(values.otp);
+    }
+  });
+
+  const formik = useFormik<FormData>({
+    initialValues: {
+      firstName: '',
+      lastName: '',
+      dateOfBirth: '',
+      contactNumber: '',
+      countryCode: '',
+      email: '',
+      gender: '',
+      bloodGroup: '',
+      pincode: '',
+      state: '',
+      city: '',
+      emergencyContact: '',
+      emergencyCountryCode: ''
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      setLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append('FirstName', values.firstName.trim());
+        formData.append('LastName', values.lastName.trim());
+        formData.append('Email', values.email.trim());
+        formData.append('Gender', values.gender);
+        formData.append('Phone', values.contactNumber);
+        formData.append('Dob', values.dateOfBirth);
+        formData.append('City', values.city);
+        formData.append('State', values.state);
+
+        if (values.countryCode) {
+          try {
+            const countryData = JSON.parse(values.countryCode);
+            const combinedCountryCode = `${countryData.country} ${countryData.dialingCode}`;
+            formData.append('CountryCode', combinedCountryCode);
+          } catch (e) {
+            formData.append('CountryCode', values.countryCode);
+          }
+        } else {
+          formData.append('CountryCode', '+91');
+        }
+
+        if (values.bloodGroup) {
+          formData.append('BloodGroup', values.bloodGroup);
+        }
+
+        if (values.pincode) {
+          formData.append('Pincode', values.pincode);
+        }
+
+        if (values.emergencyContact) {
+          formData.append('EmergencyContact', values.emergencyContact);
+        }
+
+        if (values.emergencyCountryCode) {
+          try {
+            const countryData = JSON.parse(values.emergencyCountryCode);
+            const combinedCountryCode = `${countryData.country} ${countryData.dialingCode}`;
+            formData.append('EmergencyCountryCode', combinedCountryCode);
+          } catch (e) {
+            formData.append('EmergencyCountryCode', values.emergencyCountryCode);
+          }
+        }
+        if (profileImageFile) {
+          formData.append('ProfilePhoto', profileImageFile);
+        }
+        const currentUserId = await getUserId();
+        console.log('FormData contents:');
+        for (let [key, value] of formData.entries()) {
+          console.log(key, value);
+        }
+        const response = await AddProfile(currentUserId, formData);
+        toast.success(`${response.data.message}`);
+        await ProfileDetailsList();
+        router.push('/dashboard');
+      } catch (error) {
+        console.error('Error updating profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  });
+
+  const getUserId = async (): Promise<number> => {
+    try {
+      const encryptedUserId = localStorage.getItem("userId");
+      if (!encryptedUserId) {
+        return 0;
+      }
+      const userIdStr = await decryptData(encryptedUserId);
+      return parseInt(userIdStr, 10);
+    } catch (error) {
+      console.error("Error getting userId:", error);
+      return 0;
+    }
+  };
+
+  const handlePincodeChange = useCallback(async (pincode: string) => {
+    if (pincode.length === 6) {
+      setPincodeLoading(true);
+      try {
+        const response = await ListPincode(pincode);
+
+        if (response && response.data) {
+          const locationData = response.data.data;
+
+          formik.setFieldValue('state', locationData.state || '');
+          formik.setFieldValue('city', locationData.city || '');
+        }
+      } catch (error) {
+        toast.error('Unable to fetch location details for this pincode');
+        formik.setFieldValue('state', '');
+        formik.setFieldValue('city', '');
+      } finally {
+        setPincodeLoading(false);
+      }
+    } else {
+      formik.setFieldValue('state', '');
+      formik.setFieldValue('city', '');
+    }
+  }, [formik]);
+
+  const handleCustomChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
     let processedValue = value;
-    
-    // Input validation based on field type
+
     if (name === 'firstName' || name === 'lastName') {
       processedValue = value.replace(/[^a-zA-Z ]/g, '');
     } else if (name === 'pincode') {
       processedValue = value.replace(/[^0-9]/g, '').slice(0, 6);
-      
-      // Auto-populate state and city based on pincode
-      if (processedValue.length === 6) {
-        handlePincodeChange(processedValue);
+      formik.setFieldValue(name, processedValue);
+      handlePincodeChange(processedValue);
+      return;
+    } else if (name === 'emergencyContact' || name === 'contactNumber') {
+      processedValue = value.replace(/[^0-9]/g, '');
+    }
+    formik.setFieldValue(name, processedValue);
+  }, [formik, handlePincodeChange]);
+
+  const handleRegularChange = formik.handleChange;
+
+  const handleOTPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+    otpFormik.setFieldValue('otp', value);
+  }, [otpFormik]);
+
+  const handlePhoneOTPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+    phoneOtpFormik.setFieldValue('otp', value);
+  }, [phoneOtpFormik]);
+
+  const handleEmailVerificationClick = async () => {
+    setOtpLoading(true);
+    try {
+      const currentUserId = await getUserId();
+      const currentEmail = formik.values.email || userEmail;
+      if (!currentUserId || !currentEmail) {
+        alert('User ID or email not found. Please refresh the page.');
+        return;
       }
-    } else if (name === 'emergencyContact') {
-      processedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: processedValue
-    }));
-
-    // Load cities when state changes
-    if (name === 'state') {
-      setCities(citiesData[processedValue] || []);
-      setFormData(prev => ({ ...prev, city: '0' }));
-    }
-
-    // Clear errors
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      const payload = {
+        userId: currentUserId,
+        email: currentEmail
+      };
+      const response = await OTPSend(payload);
+      toast.success(`${response.data.message}`)
+      setUserId(currentUserId);
+      setUserEmail(currentEmail);
+      setShowOTPModal(true);
+      otpFormik.resetForm();
+      localStorage.setItem('isEmailVerified', 'true');
+    } catch (error) {
+      console.log(error, "error")
+    } finally {
+      setOtpLoading(false);
     }
   };
 
-  const handlePincodeChange = async (pincode: string) => {
-    // Sample pincode to location mapping
-    const pincodeMapping: Record<string, { state: string; city: string }> = {
-      '400020': { state: '14', city: '1' }, // Mumbai, Maharashtra
-      '411001': { state: '14', city: '2' }, // Pune, Maharashtra
-      '560001': { state: '11', city: '9' }, // Bangalore, Karnataka
+  const handlePhoneVerificationClick = async () => {
+    try {
+      const encryptedUserId = localStorage.getItem("userId");
+      if (!encryptedUserId) {
+        toast.error('User ID not found. Please refresh the page.');
+        return;
+      }
+      const userIdStr = await decryptData(encryptedUserId);
+      const currentUserId = parseInt(userIdStr, 10);
+      const response = await BasicDetailsList(currentUserId);
+      const data = response?.data?.data;
+      if (!data) {
+        toast.error('Unable to fetch current phone details.');
+        return;
+      }
+      const dbCountryCode = data.countryCode || '';
+      const dbPhoneNumber = data.phone || '';
+      let formattedOldCountryCode = '';
+      if (dbCountryCode && Array.isArray(listCountyCode) && listCountyCode.length > 0) {
+        let cleanDialingCode = dbCountryCode.toString().trim();
+        if (!cleanDialingCode.startsWith('+')) {
+          cleanDialingCode = '+' + cleanDialingCode;
+        }
+        const country = listCountyCode.find(c => {
+          const countryDialingCode = c.dialingCode.toString().trim();
+          return countryDialingCode === cleanDialingCode ||
+            countryDialingCode === dbCountryCode.toString().trim();
+        });
+        if (country) {
+          formattedOldCountryCode = `${country.country} ${country.dialingCode}`;
+        } else {
+          formattedOldCountryCode = dbCountryCode;
+          console.log('No matching country found, using raw code:', dbCountryCode);
+        }
+      }
+      setOldCountryCode(formattedOldCountryCode);
+      setOldPhoneNumber(dbPhoneNumber);
+      setPhoneOtpStep('verify');
+      setShowOTPPhoneModal(true);
+      phoneOtpFormik.resetForm();
+    } catch (error) {
+      console.error('Error opening phone verification modal:', error);
+      toast.error('Error opening phone verification. Please try again.');
+    }
+  };
+
+  const handleSendPhoneOTP = async () => {
+    setPhoneOtpLoading(true);
+    try {
+      const currentUserId = await getUserId();
+      const newCountryCode = formik.values.countryCode;
+      const newPhoneNumber = formik.values.contactNumber;
+      let parsedNewCountryCode = '';
+      if (newCountryCode) {
+        try {
+          const countryData = JSON.parse(newCountryCode);
+          parsedNewCountryCode = `${countryData.country} ${countryData.dialingCode}`;
+        } catch (e) {
+          parsedNewCountryCode = newCountryCode;
+        }
+      }
+      const payload = {
+        userId: currentUserId,
+        oldCountryCode: oldCountryCode || '',
+        oldPhoneNumber: oldPhoneNumber || '',
+        newCountryCode: parsedNewCountryCode || oldCountryCode || '',
+        newPhoneNumber: newPhoneNumber || oldPhoneNumber || ''
+      };
+
+      const response = await OTpVerifyMember(payload);
+      toast.success(`${response.data.message}`);
+      setPhoneOtpStep('otp');
+    } catch (error) {
+      console.error('Error sending phone OTP:', error);
+    } finally {
+      setPhoneOtpLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOTP = async (otp: string) => {
+    setPhoneVerifyLoading(true);
+    try {
+      const currentUserId = await getUserId();
+      const newPhoneNumber = formik.values.contactNumber;
+      let parsedCountryCode = '';
+      if (formik.values.countryCode) {
+        try {
+          const countryData = JSON.parse(formik.values.countryCode);
+          parsedCountryCode = `${countryData.country} ${countryData.dialingCode}`;
+        } catch (e) {
+          parsedCountryCode = formik.values.countryCode;
+        }
+      }
+      const payload = {
+        userId: currentUserId,
+        countryCode: parsedCountryCode || '',
+        phoneNumber: newPhoneNumber || '',
+        otp: otp
+      };
+      const response = await OTpSubmitMember(payload);
+      toast.success(response.data.message);
+      setShowOTPPhoneModal(false);
+      setIsPhoneVerified(true);
+      localStorage.setItem('isPhoneVerified', 'true');
+      await ProfileDetailsList();
+    } catch (error) {
+      console.error('Error verifying phone OTP:', error);
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (otp: string) => {
+    setVerifyLoading(true);
+    try {
+      const payload = {
+        userId: userId,
+        email: userEmail,
+        otp: otp
+      };
+      const response = await VerigyOTps(payload);
+      toast.success(`${response.data.message}`);
+      setShowOTPModal(false);
+      await ProfileDetailsList();
+    } catch (error) {
+      console.log(error, "error");
+
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeData = async () => {
+      await ListCountry();
+      await ProfileDetailsList();
     };
 
-    const location = pincodeMapping[pincode];
-    if (location) {
-      setFormData(prev => ({
-        ...prev,
-        state: location.state,
-        city: location.city
-      }));
-      setCities(citiesData[location.state] || []);
+    initializeData();
+  }, []);
+
+
+  const ProfileDetailsList = async () => {
+    try {
+      const encryptedUserId = localStorage.getItem("userId");
+      if (!encryptedUserId) {
+        return;
+      }
+      const userIdStr = await decryptData(encryptedUserId);
+      const currentUserId = parseInt(userIdStr, 10);
+      setUserId(currentUserId);
+      const response = await BasicDetailsList(currentUserId);
+      const data = response?.data?.data;
+      setListDetails(data);
+      setUserEmail(data.email || '');
+      if (data.profileURL) {
+        setProfileImage(data.profileURL);
+      }
+      const formatCountryCode = (dialingCode: any) => {
+        if (!dialingCode || !Array.isArray(listCountyCode) || listCountyCode.length === 0) {
+          return '';
+        }
+        let cleanDialingCode = dialingCode.toString().trim();
+        if (!cleanDialingCode.startsWith('+')) {
+          cleanDialingCode = '+' + cleanDialingCode;
+        }
+        const country = listCountyCode.find(c => {
+          const countryDialingCode = c.dialingCode.toString().trim();
+          return countryDialingCode === cleanDialingCode ||
+            countryDialingCode === dialingCode.toString().trim();
+        });
+        if (country) {
+          return JSON.stringify({
+            country: country.country,
+            dialingCode: country.dialingCode,
+          });
+        } else {
+          console.log('No matching country found for:', dialingCode);
+          return '';
+        }
+      };
+
+      if (data.countryCode && data.phone) {
+        const originalCountryCode = data.countryCode;
+        const originalPhone = data.phone;
+
+        if (Array.isArray(listCountyCode) && listCountyCode.length > 0) {
+          let cleanDialingCode = originalCountryCode.toString().trim();
+          if (!cleanDialingCode.startsWith('+')) {
+            cleanDialingCode = '+' + cleanDialingCode;
+          }
+
+          const country = listCountyCode.find(c =>
+            c.dialingCode.toString().trim() === cleanDialingCode ||
+            c.dialingCode.toString().trim() === originalCountryCode.toString().trim()
+          );
+
+          if (country) {
+            setOldCountryCode(`${country.country} ${country.dialingCode}`);
+          } else {
+            setOldCountryCode(originalCountryCode);
+          }
+        } else {
+          setOldCountryCode(originalCountryCode);
+        }
+
+        setOldPhoneNumber(originalPhone);
+      }
+
+      formik.setValues({
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        dateOfBirth: data.dob || '',
+        contactNumber: data.phone || '',
+        countryCode: formatCountryCode(data.countryCode),
+        email: data.email || '',
+        gender: data.gender?.toString() || '',
+        bloodGroup: data.bloodGroup?.toString() || '',
+        pincode: data.pincode || '',
+        state: data.state || '',
+        city: data.city || '',
+        emergencyContact: data.emergencyContact || '',
+        emergencyCountryCode: formatCountryCode(data.emergencyCountryCode),
+      });
+
+    } catch (error) {
+      console.error("Error fetching profile details:", error);
     }
   };
+
+  useEffect(() => {
+    ProfileDetailsList();
+  }, []);
+
+  const FlagList = async () => {
+    const encryptedUserId = localStorage.getItem("userId");
+    if (!encryptedUserId) {
+      return;
+    }
+
+    const userIdStr = await decryptData(encryptedUserId);
+    const userId = parseInt(userIdStr, 10);
+    const response = await ListFlag(userId);
+    setFlagUrl(response.data.data);
+  }
+
+  useEffect(() => {
+    FlagList();
+  }, [])
+
+  const ListCountry = async () => {
+    try {
+      const response = await listCounty();
+      setListCountryCode(response?.data?.data || []);
+    } catch (error) {
+      console.error("Error fetching country codes:", error);
+    }
+  };
+
+  useEffect(() => {
+    ListCountry();
+  }, []);
+
+  useEffect(() => {
+    if (listCountyCode.length > 0 && listDetails) {
+      const dbCountryCode = listDetails.countryCode;
+      const dbEmergencyCountryCode = listDetails.emergencyCountryCode;
+
+      if (dbCountryCode) {
+        const formatCountryCode = (dialingCode: any) => {
+          if (!dialingCode) return '';
+
+          let cleanDialingCode = dialingCode.toString().trim();
+          if (!cleanDialingCode.startsWith('+')) {
+            cleanDialingCode = '+' + cleanDialingCode;
+          }
+
+          const country = listCountyCode.find(c => {
+            const countryDialingCode = c.dialingCode.toString().trim();
+            return countryDialingCode === cleanDialingCode ||
+              countryDialingCode === dialingCode.toString().trim();
+          });
+
+          return country ? JSON.stringify({
+            country: country.country,
+            dialingCode: country.dialingCode,
+          }) : '';
+        };
+
+        formik.setFieldValue('countryCode', formatCountryCode(dbCountryCode));
+        if (dbEmergencyCountryCode) {
+          formik.setFieldValue('emergencyCountryCode', formatCountryCode(dbEmergencyCountryCode));
+        }
+
+        const country = listCountyCode.find(c => {
+          const cleanDialingCode = dbCountryCode.toString().trim().startsWith('+')
+            ? dbCountryCode.toString().trim()
+            : '+' + dbCountryCode.toString().trim();
+          return c.dialingCode.toString().trim() === cleanDialingCode;
+        });
+
+        if (country) {
+          setOldCountryCode(`${country.country} ${country.dialingCode}`);
+        }
+      }
+    }
+  }, [listCountyCode, listDetails]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
+      if (!file.type.match(/^image\/(png|jpg|jpeg)$/)) {
+        toast.error('Please select a valid image file (PNG, JPG, JPEG)');
+        return;
+      }
+
+      setImageLoading(true);
       setProfileImageFile(file);
+
       const reader = new FileReader();
       reader.onload = (e) => {
         setProfileImage(e.target?.result as string);
+        setImageLoading(false);
+      };
+      reader.onerror = () => {
+        toast.error('Error reading the image file');
+        setImageLoading(false);
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
-    if (!formData.contactNumber.trim()) newErrors.contactNumber = 'Contact number is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.gender) newErrors.gender = 'Gender is required';
-    if (!formData.state || formData.state === '0') newErrors.state = 'State is required';
-    if (!formData.city || formData.city === '0') newErrors.city = 'City is required';
-
-    if (formData.pincode && !/^[1-9][0-9]{5}$/.test(formData.pincode)) {
-      newErrors.pincode = 'Invalid pincode';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    setLoading(true);
-    
-    try {
-      // Your API call here
-      console.log('Form data:', formData);
-      console.log('Profile image:', profileImageFile);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Redirect to dashboard or show success message
-      router.push('/Dashboard');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setErrors({ general: 'An error occurred while updating profile' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -233,314 +671,736 @@ const addbasicdetails: React.FC = () => {
     fileInput?.click();
   };
 
-  // Field component for consistent styling
-  const FormField: React.FC<{
-    name: string;
-    type?: string;
-    placeholder?: string;
-    icon: string;
-    required?: boolean;
-    maxLength?: number;
-    max?: string;
-    children?: React.ReactNode;
-    hasFlag?: boolean;
-  }> = ({ name, type = 'text', placeholder, icon, required = false, maxLength, max, children, hasFlag = false }) => (
-    <div className="relative mb-4">
-      <div className="relative">
-        <i className={`${icon} absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg`}></i>
-        {children || (
-          <input
-            type={type}
-            name={name}
-            value={formData[name as keyof FormData]}
-            onChange={handleInputChange}
-            className={`w-full ${hasFlag ? 'pl-12 pr-16' : 'pl-12 pr-4'} py-3 border border-gray-300 rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
-            placeholder={placeholder}
-            required={required}
-            maxLength={maxLength}
-            max={max}
-          />
+  const ContactNumberField: React.FC = () => {
+    return (
+      <div className="relative mb-4">
+        <div className="relative">
+          <i className="fa-solid fa-phone absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+          <div className={`bg-white rounded-full border ${formik.touched.contactNumber && formik.errors.contactNumber ? 'border-red-500' :
+            formik.touched.countryCode && formik.errors.countryCode ? 'border-red-500' : 'border-gray-300'
+            } overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all duration-200`}>
+
+            <div className="flex items-center">
+              <select
+                name="countryCode"
+                aria-label="Country Code"
+                value={formik.values.countryCode}
+                onChange={handleRegularChange}
+                onBlur={formik.handleBlur}
+                className="border-0 bg-transparent py-3 pl-7 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                style={{ minWidth: '120px' }}
+              >
+                <option value="">Country</option>
+                {Array.isArray(listCountyCode) &&
+                  listCountyCode.map((country, index) => (
+                    <option
+                      key={index}
+                      value={JSON.stringify({
+                        country: country.country,
+                        dialingCode: country.dialingCode,
+                      })}
+                    >
+                      {country.country} {country.dialingCode}
+                    </option>
+                  ))}
+              </select>
+
+              <div className="h-6 w-px bg-gray-300 mx-1"></div>
+              <input
+                type="text"
+                name="contactNumber"
+                placeholder="Contact Number"
+                value={formik.values.contactNumber}
+                onChange={handleCustomChange}
+                onBlur={formik.handleBlur}
+                className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400"
+                maxLength={10}
+              />
+
+              {flagUrl && (
+                <img
+                  src={flagUrl}
+                  alt="Country flag"
+                  width={24}
+                  height={16}
+                  className="mr-4"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        {formik.touched.countryCode && formik.errors.countryCode && (
+          <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.countryCode}</span>
+        )}
+        {formik.touched.contactNumber && formik.errors.contactNumber && (
+          <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.contactNumber}</span>
         )}
       </div>
-      {errors[name] && (
-        <span className="block text-red-500 text-xs mt-1 ml-4">{errors[name]}</span>
-      )}
-    </div>
-  );
+    );
+  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
-      {/* Header */}
-      <div className="flex justify-between items-center p-5">
-        <button 
-          onClick={() => router.push('/Dashboard')}
-          className="text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200"
-        >
-          Back to Home
-        </button>
-        <div className="text-right">
-          <span className="text-gray-800 font-medium">rahul</span>
+  const EmergencyContactField: React.FC = () => {
+    return (
+      <div className="relative mb-4">
+        <div className="relative">
+          <i className="fa-solid fa-phone absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+          <div className={`bg-white rounded-full border  overflow-hidden
+            focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all duration-200`}>
+
+            <div className="flex items-center">
+              <select
+                name="emergencyCountryCode"
+                aria-label="Emergency Country Code"
+                value={formik.values.emergencyCountryCode}
+                onChange={handleRegularChange}
+                onBlur={formik.handleBlur}
+                className="border-0 bg-transparent py-3 pl-7 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                style={{ minWidth: '120px' }}
+              >
+                <option value="">Country</option>
+                {Array.isArray(listCountyCode) &&
+                  listCountyCode.map((country, index) => (
+                    <option
+                      key={index}
+                      value={JSON.stringify({
+                        country: country.country,
+                        dialingCode: country.dialingCode,
+                      })}
+                    >
+                      {country.country} {country.dialingCode}
+                    </option>
+                  ))}
+              </select>
+
+              <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+              <input
+                type="text"
+                name="emergencyContact"
+                placeholder="Emergency Contact Number"
+                value={formik.values.emergencyContact}
+                onChange={handleCustomChange}
+                onBlur={formik.handleBlur}
+                className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400"
+              />
+
+              {flagUrl && (
+                <img
+                  src={flagUrl}
+                  alt="Country flag"
+                  width={24}
+                  height={16}
+                  className="mr-4"
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
+    );
+  };
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
-          {/* Profile Image Section */}
-          <div className="w-full lg:w-auto lg:min-w-[400px] flex flex-col items-center">
-            {/* Profile Image */}
-            <div className="mb-6 relative">
-              <div className="w-48 h-48 rounded-full border-4 border-yellow-400 p-1 bg-white shadow-lg">
-                <Image
-                  id="imagePreview"
-                  src={profileImage}
-                  alt="Profile"
-                  width={180}
-                  height={180}
-                  className="w-full h-full rounded-full object-cover"
-                />
+  const OTPModal: React.FC = () => {
+    if (!showOTPModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fa-solid fa-envelope text-blue-600 text-2xl"></i>
               </div>
-            </div>
-            
-            {/* Change Image Button */}
-            <button 
-              onClick={showFileUpload}
-              className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
-            >
-              Change Profile Image
-            </button>
-            <input
-              id="profileUpload"
-              type="file"
-              accept=".png,.jpg,.jpeg"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-          </div>
-
-          {/* Form Section */}
-          <div className="flex-1 w-full max-w-5xl">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-2xl lg:text-3xl font-bold text-blue-700 mb-3">
-                Ready to manage your health? Let's get you set up!
-              </h1>
-              <p className="text-gray-600 text-base">
-                Fill in your details to kickstart your health journey
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Verify Your Email</h2>
+              <p className="text-gray-600 text-sm">
+                We've sent a 6-digit OTP to your email address
               </p>
-              <div className="w-20 h-1 bg-blue-400 mx-auto mt-4 rounded-full"></div>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              {/* Form Fields Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-                {/* Left Column */}
-                <div className="space-y-4">
-                  <FormField
-                    name="firstName"
-                    placeholder="rahul"
-                    icon="fa-solid fa-user"
-                    required
-                  />
-
-                  <FormField
-                    name="lastName"
-                    placeholder="sinha"
-                    icon="fa-solid fa-user"
-                    required
-                  />
-
-                  <FormField
-                    name="dateOfBirth"
-                    type="date"
-                    placeholder="15-12-1997"
-                    icon="fa-solid fa-calendar-days"
-                    required
-                    max={new Date().toISOString().split('T')[0]}
-                  />
-
-                  {/* Contact Number with Flag */}
-                  <FormField
-                    name="contactNumber"
-                    type="tel"
-                    placeholder="+91 8007341147"
-                    icon="fa-solid fa-phone"
-                    required
-                    maxLength={10}
-                    hasFlag={true}
-                  >
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        name="contactNumber"
-                        value={formData.contactNumber}
-                        onChange={handleInputChange}
-                        className="w-full pl-12 pr-16 py-3 border border-gray-300 rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                        placeholder="+91 8007341147"
-                        required
-                        maxLength={10}
-                      />
-                      <Image 
-                        src="/assets/india-flag.png"
-                        alt="India flag"
-                        width={24}
-                        height={16}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2"
-                      />
-                    </div>
-                  </FormField>
-
-                  <FormField
-                    name="email"
+            <form onSubmit={otpFormik.handleSubmit}>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-medium mb-2">Email Address</label>
+                <div className="relative">
+                  <i className="fa-solid fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <input
                     type="email"
-                    placeholder="kamleshfiles2024@gmail.com"
-                    icon="fa-solid fa-envelope"
-                    required
+                    value={userEmail}
+                    readOnly
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-gray-50 text-gray-700 focus:outline-none"
                   />
                 </div>
+              </div>
 
-                {/* Right Column */}
-                <div className="space-y-4">
-                  {/* Gender */}
-                  <FormField
-                    name="gender"
-                    icon="fa-solid fa-venus-mars"
-                    required
-                  >
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
-                        formData.gender ? 'text-gray-700' : 'text-gray-400'
-                      }`}
-                      required
-                    >
-                      <option value="" disabled>Male</option>
-                      <option value="1">Male</option>
-                      <option value="2">Female</option>
-                      <option value="3">Others</option>
-                    </select>
-                  </FormField>
-
-                  {/* Blood Group */}
-                  <FormField
-                    name="bloodGroup"
-                    icon="fa-solid fa-droplet"
-                  >
-                    <select
-                      name="bloodGroup"
-                      value={formData.bloodGroup}
-                      onChange={handleInputChange}
-                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
-                        formData.bloodGroup && formData.bloodGroup !== '0' ? 'text-gray-700' : 'text-gray-400'
-                      }`}
-                    >
-                      <option value="0">A+</option>
-                      <option value="1">A+</option>
-                      <option value="2">A-</option>
-                      <option value="3">B+</option>
-                      <option value="4">B-</option>
-                      <option value="5">AB+</option>
-                      <option value="6">AB-</option>
-                      <option value="7">O+</option>
-                      <option value="8">O-</option>
-                    </select>
-                  </FormField>
-
-                  <FormField
-                    name="pincode"
-                    placeholder="400020"
-                    icon="fa-solid fa-location-dot"
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-medium mb-2">Enter OTP</label>
+                <div className="relative">
+                  <i className="fa-solid fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <input
+                    type="text"
+                    name="otp"
+                    value={otpFormik.values.otp}
+                    onChange={handleOTPChange}
+                    onBlur={otpFormik.handleBlur}
+                    className={`w-full pl-12 pr-4 py-3 border ${otpFormik.touched.otp && otpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-lg tracking-widest`}
+                    placeholder="000000"
                     maxLength={6}
                   />
-
-                  {/* State */}
-                  <FormField
-                    name="state"
-                    icon="fa-solid fa-map-location-dot"
-                    required
-                  >
-                    <select
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
-                        formData.state && formData.state !== '0' ? 'text-gray-700' : 'text-gray-400'
-                      }`}
-                      required
-                    >
-                      <option value="14">MAHARASHTRA</option>
-                      {states.map(state => (
-                        <option key={state.id} value={state.id}>{state.name}</option>
-                      ))}
-                    </select>
-                  </FormField>
-
-                  {/* City */}
-                  <FormField
-                    name="city"
-                    icon="fa-solid fa-city"
-                    required
-                  >
-                    <select
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${
-                        formData.city && formData.city !== '0' ? 'text-gray-700' : 'text-gray-400'
-                      }`}
-                      required
-                    >
-                      <option value="1">Mumbai</option>
-                      {cities.map(city => (
-                        <option key={city.id} value={city.id}>{city.name}</option>
-                      ))}
-                    </select>
-                  </FormField>
-
-                  <FormField
-                    name="emergencyContact"
-                    type="tel"
-                    placeholder="Emergency Contact Number"
-                    icon="fa-solid fa-phone"
-                    maxLength={10}
-                  />
                 </div>
+                {otpFormik.touched.otp && otpFormik.errors.otp && (
+                  <span className="block text-red-500 text-xs mt-1 ml-4">{otpFormik.errors.otp}</span>
+                )}
               </div>
 
-              {/* Buttons */}
-              <div className="flex flex-col items-center space-y-4 mt-8">
+              <div className="flex flex-col space-y-3">
                 <button
                   type="submit"
-                  disabled={loading}
-                  className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold py-4 px-16 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[200px] ${
-                    loading ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  disabled={verifyLoading || !otpFormik.isValid}
+                  className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${verifyLoading || !otpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {loading ? 'Updating...' : 'Update'}
+                  {verifyLoading ? 'Verifying...' : 'Verify OTP'}
                 </button>
 
-                <a 
-                  href="/change-password" 
-                  className="text-center text-sm hover:underline transition-all duration-200"
-                >
-                  <span className="text-gray-600">Click Here to </span>
-                  <span className="text-blue-700 font-semibold underline">Change Password</span>
-                </a>
-              </div>
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={handleEmailVerificationClick}
+                    disabled={otpLoading}
+                    className={`flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm ${otpLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {otpLoading ? 'Sending...' : 'Resend OTP'}
+                  </button>
 
-              {/* General Error */}
-              {errors.general && (
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
-                  {errors.general}
+                  <button
+                    type="button"
+                    onClick={() => setShowOTPModal(false)}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                  >
+                    Cancel
+                  </button>
                 </div>
-              )}
+              </div>
             </form>
           </div>
         </div>
       </div>
-    </div>
+    );
+  };
+
+  const OTPPhoneModal: React.FC = () => {
+    if (!showOTPPhoneModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fa-solid fa-phone text-blue-600 text-2xl"></i>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                {phoneOtpStep === 'verify' ? 'Verify Your Phone' : 'Enter OTP'}
+              </h2>
+              <p className="text-gray-600 text-sm">
+                {phoneOtpStep === 'verify'
+                  ? 'Confirm your phone number to receive OTP'
+                  : 'Enter the 6-digit OTP sent to your phone'
+                }
+              </p>
+            </div>
+
+            {phoneOtpStep === 'verify' ? (
+              <div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Current Phone</label>
+                  <div className="flex items-center bg-gray-50 rounded-full p-3">
+                    <span className="text-gray-600 text-sm">
+                      {oldCountryCode} {oldPhoneNumber}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">New Phone Number</label>
+                  <div className={`bg-white rounded-full border ${formik.touched.contactNumber && formik.errors.contactNumber ? 'border-red-500' :
+                    formik.touched.countryCode && formik.errors.countryCode ? 'border-red-500' : 'border-gray-300'
+                    } overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all duration-200`}>
+                    <div className="flex items-center">
+                      <select
+                        name="countryCode"
+                        aria-label="Country Code"
+                        value={formik.values.countryCode}
+                        onChange={handleRegularChange}
+                        onBlur={formik.handleBlur}
+                        className="border-0 bg-transparent py-3 pl-4 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                        style={{ minWidth: '120px' }}
+                      >
+                        <option value="">Country</option>
+                        {Array.isArray(listCountyCode) &&
+                          listCountyCode.map((country, index) => (
+                            <option
+                              key={index}
+                              value={JSON.stringify({
+                                country: country.country,
+                                dialingCode: country.dialingCode,
+                              })}
+                            >
+                              {country.country} {country.dialingCode}
+                            </option>
+                          ))}
+                      </select>
+
+                      <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+                      <input
+                        type="text"
+                        name="contactNumber"
+                        placeholder="Phone Number"
+                        value={formik.values.contactNumber}
+                        onChange={handleCustomChange}
+                        onBlur={formik.handleBlur}
+                        className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+                  {formik.touched.countryCode && formik.errors.countryCode && (
+                    <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.countryCode}</span>
+                  )}
+                  {formik.touched.contactNumber && formik.errors.contactNumber && (
+                    <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.contactNumber}</span>
+                  )}
+                </div>
+
+                <div className="flex flex-col space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleSendPhoneOTP}
+                    disabled={phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode}
+                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
+                      }`}
+                  >
+                    {phoneOtpLoading ? 'Sending OTP...' : 'Send OTP'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowOTPPhoneModal(false)}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={phoneOtpFormik.handleSubmit}>
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Phone Number</label>
+                  <div className="relative">
+                    <i className="fa-solid fa-phone absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input
+                      type="text"
+                      value={`${formik.values.countryCode ? JSON.parse(formik.values.countryCode).dialingCode : ''} ${formik.values.contactNumber}`}
+                      readOnly
+                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-gray-50 text-gray-700 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Enter OTP</label>
+                  <div className="relative">
+                    <i className="fa-solid fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input
+                      type="text"
+                      name="otp"
+                      value={phoneOtpFormik.values.otp}
+                      onChange={handlePhoneOTPChange}
+                      onBlur={phoneOtpFormik.handleBlur}
+                      className={`w-full pl-12 pr-4 py-3 border ${phoneOtpFormik.touched.otp && phoneOtpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'
+                        } rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-lg tracking-widest`}
+                      placeholder="000000"
+                      maxLength={6}
+                    />
+                  </div>
+                  {phoneOtpFormik.touched.otp && phoneOtpFormik.errors.otp && (
+                    <span className="block text-red-500 text-xs mt-1 ml-4">{phoneOtpFormik.errors.otp}</span>
+                  )}
+                </div>
+
+                <div className="flex flex-col space-y-3">
+                  <button
+                    type="submit"
+                    disabled={phoneVerifyLoading || !phoneOtpFormik.isValid}
+                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${phoneVerifyLoading || !phoneOtpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                  >
+                    {phoneVerifyLoading ? 'Verifying...' : 'Verify OTP'}
+                  </button>
+
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOTP}
+                      disabled={phoneOtpLoading}
+                      className={`flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm ${phoneOtpLoading ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                    >
+                      {phoneOtpLoading ? 'Sending...' : 'Resend OTP'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhoneOtpStep('verify');
+                        phoneOtpFormik.resetForm();
+                      }}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                    >
+                      Back
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowOTPPhoneModal(false)}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <MasterHome>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
+        <div className="flex justify-between items-center p-5">
+          <button
+            onClick={() => router.push('/Dashboard')}
+            className="text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200"
+          >
+            Back to Home
+          </button>
+        </div>
+
+        {!isEmailVerified && (
+          <div
+            className='bg-red-300 mb-3 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2'
+            onClick={handleEmailVerificationClick}
+          >
+            <p className="text-red-800 font-medium">
+              {otpLoading ? 'Sending OTP...' : 'Please Verify Email - Click Here'}
+            </p>
+          </div>
+        )}
+
+        {!isPhoneVerified && (
+          <div
+            className='bg-red-300 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2'
+            onClick={handlePhoneVerificationClick}
+          >
+            <p className="text-red-800 font-medium">
+              {otpLoading ? 'Sending OTP...' : 'Please Verify Phone - Click Here'}
+            </p>
+          </div>
+        )}
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
+            <div className="w-full lg:w-auto lg:min-w-[400px] flex flex-col items-center">
+              <div className="mb-6 relative">
+                <div className="w-48 h-48 rounded-full border-4 border-yellow-400 p-1 bg-white shadow-lg">
+                  {imageLoading ? (
+                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : (
+                    <img
+                      id="imagePreview"
+                      src={profileImage}
+                      alt="Profile"
+                      width={180}
+                      height={180}
+                      className="w-full h-full rounded-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/assets/default-user-profile.png';
+                      }}
+                    />
+                  )}
+                </div>
+                {imageLoading && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                    <div className="text-white text-sm">Loading...</div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={showFileUpload}
+                disabled={imageLoading}
+                className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${imageLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {imageLoading ? 'Processing...' : 'Change Profile Image'}
+              </button>
+              <input
+                id="profileUpload"
+                type="file"
+                accept=".png,.jpg,.jpeg"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+
+            <div className="flex-1 w-full max-w-5xl">
+              <div className="text-center mb-8">
+                <h1 className="text-2xl lg:text-3xl font-bold text-blue-700 mb-3">
+                  Ready to manage your health? Let's get you set up!
+                </h1>
+                <p className="text-gray-600 text-base">
+                  Fill in your details to kickstart your health journey
+                </p>
+                <div className="w-20 h-1 bg-blue-400 mx-auto mt-4 rounded-full"></div>
+              </div>
+
+              <form onSubmit={formik.handleSubmit}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                  <div className="space-y-4">
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formik.values.firstName}
+                          onChange={handleCustomChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          placeholder="rahul"
+                          required
+                        />
+                      </div>
+                      {formik.touched.firstName && formik.errors.firstName && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.firstName}</span>
+                      )}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formik.values.lastName}
+                          onChange={handleCustomChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          placeholder="sinha"
+                          required
+                        />
+                      </div>
+                      {formik.touched.lastName && formik.errors.lastName && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.lastName}</span>
+                      )}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-calendar-days absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          value={formik.values.dateOfBirth}
+                          onChange={handleRegularChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          placeholder="15-12-1997"
+                          required
+                          max={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                      {formik.touched.dateOfBirth && formik.errors.dateOfBirth && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.dateOfBirth}</span>
+                      )}
+                    </div>
+
+                    <ContactNumberField />
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formik.values.email}
+                          onChange={handleRegularChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.email && formik.errors.email ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          placeholder="kamleshfiles2024@gmail.com"
+                          required
+                        />
+                      </div>
+                      {formik.touched.email && formik.errors.email && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.email}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-venus-mars absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <select
+                          name="gender"
+                          value={formik.values.gender}
+                          onChange={handleRegularChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.gender && formik.errors.gender ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${formik.values.gender ? 'text-gray-700' : 'text-gray-400'}`}
+                          required
+                        >
+                          <option value="" disabled>Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Others">Others</option>
+                        </select>
+                      </div>
+                      {formik.touched.gender && formik.errors.gender && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.gender}</span>
+                      )}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-droplet absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <select
+                          name="bloodGroup"
+                          value={formik.values.bloodGroup}
+                          onChange={handleRegularChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.bloodGroup && formik.errors.bloodGroup ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${formik.values.bloodGroup && formik.values.bloodGroup !== '0' ? 'text-gray-700' : 'text-gray-400'}`}
+                        >
+                          <option value="">Select BloodGroup</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                        </select>
+                      </div>
+                      {formik.touched.bloodGroup && formik.errors.bloodGroup && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.bloodGroup}</span>
+                      )}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-location-dot absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="text"
+                          name="pincode"
+                          value={formik.values.pincode}
+                          onChange={handleCustomChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.pincode && formik.errors.pincode ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${pincodeLoading ? 'opacity-50' : ''}`}
+                          placeholder="400020"
+                          maxLength={6}
+                          disabled={pincodeLoading}
+                        />
+                        {pincodeLoading && (
+                          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          </div>
+                        )}
+                      </div>
+                      {formik.touched.pincode && formik.errors.pincode && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.pincode}</span>
+                      )}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-map-location-dot absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="text"
+                          name="state"
+                          value={formik.values.state}
+                          onChange={handleRegularChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.state && formik.errors.state ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          placeholder="State (Auto-filled by pincode)"
+                          required
+                        />
+                      </div>
+                      {formik.touched.state && formik.errors.state && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.state}</span>
+                      )}
+                    </div>
+
+                    <div className="relative mb-4">
+                      <div className="relative">
+                        <i className="fa-solid fa-city absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <input
+                          type="text"
+                          name="city"
+                          value={formik.values.city}
+                          onChange={handleRegularChange}
+                          onBlur={formik.handleBlur}
+                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.city && formik.errors.city ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          placeholder="City (Auto-filled by pincode)"
+                          required
+                        />
+                      </div>
+                      {formik.touched.city && formik.errors.city && (
+                        <span className="block text-red-500 text-xs mt-1 ml-4">{formik.errors.city}</span>
+                      )}
+                    </div>
+
+                    <EmergencyContactField />
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center space-y-4 mt-8">
+                  <button
+                    type="submit"
+                    disabled={loading || !formik.isValid}
+                    className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold py-4 px-16 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[200px] ${loading || !formik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {loading ? 'Updating...' : 'Update'}
+                  </button>
+
+                  <a
+                    href="/change-password"
+                    className="text-center text-sm hover:underline transition-all duration-200"
+                  >
+                    <span className="text-gray-600">Click Here to </span>
+                    <span className="text-blue-700 font-semibold underline">Change Password</span>
+                  </a>
+                </div>
+
+                {formik.status && (
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
+                    {formik.status}
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <OTPModal />
+        <OTPPhoneModal />
+      </div>
+    </MasterHome>
   );
 };
 
-export default addbasicdetails;
+export default AddBasicDetails;

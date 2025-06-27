@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import MasterHeader from './MasterHeader';
 import Footer from './Footer';
 
@@ -9,16 +9,13 @@ interface HomeProps {
 }
 
 const MasterHome: React.FC<HomeProps> = ({ children }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <div className="h-screen flex flex-col">
-      <MasterHeader isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+      <MasterHeader />
 
       <main
-        className={`flex-grow transition duration-300 ${
-          isMenuOpen ? 'blur-sm pointer-events-none' : ''
-        }`}
+        className={`flex-grow transition duration-300`}
       >
         <div className="flex-grow overflow-y-auto custom-scrollbar">
           {children}
@@ -26,9 +23,7 @@ const MasterHome: React.FC<HomeProps> = ({ children }) => {
       </main>
 
       <footer
-        className={`sticky bottom-0 transition duration-300 ${
-          isMenuOpen ? 'blur-sm pointer-events-none' : ''
-        }`}
+        className={`sticky bottom-0 transition duration-300`}
       >
         <Footer />
       </footer>

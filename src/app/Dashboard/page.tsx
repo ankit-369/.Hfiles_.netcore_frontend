@@ -1,18 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import MasterHome from '../components/MasterHome';
-// import MasterHome from "../components/MasterHome.tsx";
+import { useRouter } from 'next/navigation';
 
 function Dashboard() {
-  const userName = 'Rahul';
+  const [userName, setUserName] = useState('');
+  const router = useRouter();
 
-  const navigateTo = (path: string) => {
-    // In a real Next.js app, you would use: router.push(path)
-    // For demo purposes, we'll use window.location or you can replace with your navigation logic
-    console.log(`Navigating to: ${path}`);
-    // window.location.href = path; // Uncomment for actual navigation
+  useEffect(() => {
+    const storedUserName = localStorage.getItem('userName');
+    if (storedUserName) {
+      setUserName(storedUserName);
+    }
+  }, []);
+
+  const handleHFilesClick = () => {
+    router.push('/myHfiles');
   };
 
   return (
@@ -692,7 +697,7 @@ function Dashboard() {
                     <div className="content_divider"></div>
                   </div>
 
-                  <div className="my_profile default_profile" onClick={() => navigateTo('/my-hfiles')}>
+                  <div className="my_profile default_profile" onClick={handleHFilesClick} >
                     <div className="profile_row">
                       <div className="image_wrapper">
                         <img src="/Reception Page/h-files-icon.png" alt="H-Files" />
@@ -707,7 +712,7 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="my_profile" onClick={() => navigateTo('/medical-history')}>
+                  <div className="my_profile ">
                     <div className="profile_row">
                       <div className="image_wrapper">
                         <img src="/Reception Page/health-report-icon.png" alt="Medical History" />
@@ -722,7 +727,7 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="my_profile" onClick={() => navigateTo('/journal')}>
+                  <div className="my_profile" >
                     <div className="profile_row">
                       <div className="image_wrapper">
                         <img src="/Reception Page/journal.png" alt="Journal" />
@@ -757,15 +762,21 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="content_container">
-                    <div className="my_profile default_profile" onClick={() => navigateTo('/my-hfiles')}>
+                  <div className="content_container" >
+                    <div className="my_profile default_profile" onClick={handleHFilesClick}>
                       <div className="profile_row flex-nowrap">
                         <div className="image_wrapper">
-                          <img src="https://via.placeholder.com/60x60/4A90E2/FFFFFF?text=📁" alt="H-Files" />
+                          <img
+                            src="https://via.placeholder.com/60x60/4A90E2/FFFFFF?text=📁"
+                            alt="H-Files"
+                          />
+
                         </div>
                         <div className="my_profile_section">
                           <h3>My H-Files</h3>
-                          <span className="card-description">We've organized all your family's health reports, right here for you.</span>
+                          <span className="card-description">
+                            We've organized all your family's health reports, right here for you.
+                          </span>
                         </div>
                       </div>
                       <div className="card_icon">
@@ -783,7 +794,7 @@ function Dashboard() {
                 <div className="content_divider"></div>
               </div>
 
-              <div className="my_profile" onClick={() => navigateTo('/medical-history')}>
+              <div className="my_profile" >
                 <div className="profile_row flex-nowrap">
                   <div className="image_wrapper">
                     <img src="https://via.placeholder.com/60x60/E74C3C/FFFFFF?text=📋" alt="Medical History" />
@@ -798,7 +809,7 @@ function Dashboard() {
                 </div>
               </div>
 
-              <div className="my_profile" onClick={() => navigateTo('/journal')}>
+              <div className="my_profile" >
                 <div className="profile_row flex-nowrap">
                   <div className="image_wrapper">
                     <img src="https://via.placeholder.com/60x60/9B59B6/FFFFFF?text=📖" alt="Journal" />
@@ -830,7 +841,7 @@ function Dashboard() {
                 <div className="mobile-samantha-text">
                   I Am Samantha, Your Personal Health Manager
                 </div>
-                <div className="mobile-hfiles-card" onClick={() => navigateTo('/my-hfiles')}>
+                <div className="mobile-hfiles-card" onClick={handleHFilesClick}>
                   <div className="mobile-hfiles-content">
                     <div className="mobile-hfiles-icon">📁</div>
                     <div className="mobile-hfiles-text">
@@ -848,7 +859,7 @@ function Dashboard() {
                   <div className="mobile-records-divider"></div>
                 </div>
 
-                <div className="mobile-card" onClick={() => navigateTo('/medical-history')}>
+                <div className="mobile-card" >
                   <div className="mobile-card-content">
                     <div className="mobile-card-icon medical">📋</div>
                     <div className="mobile-card-text">
@@ -861,7 +872,7 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mobile-card" onClick={() => navigateTo('/journal')}>
+                <div className="mobile-card" >
                   <div className="mobile-card-content">
                     <div className="mobile-card-icon journal">📖</div>
                     <div className="mobile-card-text">

@@ -1,46 +1,73 @@
 'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import { Eye, EyeOff } from 'lucide-react';
-import Home from "../components/Home";
-import { Login ,otplogin} from '../services/HfilesServiceApi';
+import { listCounty, LoginOTp, LoginPassword, LoginWithOTPhahaha } from '../services/HfilesServiceApi';
 import { useRouter } from 'next/navigation';
+import DynamicPage from '../components/Header&Footer/DynamicPage';
+import { toast, ToastContainer } from 'react-toastify';
+import { encryptData, decryptData } from '../utils/webCrypto';
 
 export default function LoginPage() {
   const [loginMode, setLoginMode] = useState<'OTP' | 'password'>('OTP');
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    emailOrPhone: '',
-    password: '',
-    otp: '',
-    contactType: 'Email'
-  });
   const [timer, setTimer] = useState(0);
   const [showResendOtp, setShowResendOtp] = useState(false);
-  const [isTabletOrLarger, setIsTabletOrLarger] = useState(false);
   const router = useRouter();
+  const [listCountyCode, setListCountryCode] = useState<any[]>([]);
 
-  // Responsive padding logic
+  const isPhoneNumber = (value: string) => /^\d{10}$/.test(value);
+
+  const ListCoutny = async () => {
+    try {
+      const response = await listCounty();
+      setListCountryCode(response?.data || []);
+    } catch (error) {
+      console.error("Error fetching country codes:", error);
+    }
+  };
+
   useEffect(() => {
-    const handleResize = () => {
-      setIsTabletOrLarger(window.innerWidth >= 768);
-    };
-    handleResize(); // Initialize on mount
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    ListCoutny();
   }, []);
 
-  // Timer effect for OTP
   useEffect(() => {
     if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer(prev => prev - 1);
-      }, 1000);
+      const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
       return () => clearInterval(interval);
     } else if (timer === 0 && loginMode === 'OTP') {
       setShowResendOtp(true);
     }
   }, [timer, loginMode]);
+
+  useEffect(() => {
+    const getDecryptedTokenData = async () => {
+      const encryptedToken = localStorage.getItem("authToken");
+      if (encryptedToken) {
+        try {
+          const token = await decryptData(encryptedToken);
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const data = JSON.parse(jsonPayload);
+          localStorage.setItem("sub", await encryptData(data.sub));
+          localStorage.setItem("userId", await (data.UserId));
+        } catch (error) {
+          console.error("Failed to decode or decrypt token:", error);
+        }
+      } else {
+        console.log("No authToken found in localStorage.");
+      }
+    };
+
+    getDecryptedTokenData();
+  }, []);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -48,271 +75,345 @@ export default function LoginPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const { name, value } = e.target;
-  //   setFormData(prev => ({ ...prev, [name]: value }));
-  // };
+  const validationSchema = Yup.object().shape({
+    emailOrPhone: Yup.string()
+      .required('Email or Phone is required')
+      .matches(/^(\d{10}|\S+@\S+\.\S+)$/, 'Enter a valid 10-digit phone number or email'),
+    password: loginMode === 'password'
+      ? Yup.string()
+        .required('Password is required')
+        .min(8, 'Password must be at least 8 characters')
+        .matches(/[A-Z]/, 'Must contain at least one uppercase letter')
+        .matches(/[a-z]/, 'Must contain at least one lowercase letter')
+        .matches(/\d/, 'Must contain at least one number')
+        .matches(/[@$!%*?&#^()_\-+={}[\]|\\:;"'<>,./~`]/, 'Must contain at least one special character')
+      : Yup.string().notRequired(),
 
-  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
+    otp: loginMode === 'OTP'
+      ? Yup.string().required('OTP is required').length(6, 'OTP must be 6 digits')
+      : Yup.string().notRequired(),
+  });
 
-  // optionally trigger OTP logic
-  if (name === 'emailOrPhone' && value.length >= 10) {
-    await handleGetOtp(); // risky: could trigger too many calls while typing
-  }
-};
+  const formik = useFormik({
+    initialValues: {
+      emailOrPhone: '',
+      password: '',
+      otp: '',
+      countryCode: ''
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      debugger
+      if (loginMode === 'password') {
+        const payload = {
+          email: values.emailOrPhone,
+          password: values.password,
+        };
+        try {
+          const response = await LoginPassword(payload);
+          toast.success(`${response.data.message}`);
+          localStorage.setItem("userName", await (response.data.data.username));
+          localStorage.setItem("isEmailVerified", await (response.data.data.isEmailVerified));
+          localStorage.setItem("isPhoneVerified", await (response.data.data.isPhoneVerified));
+          const token = response.data.data.token;
 
-const handleGetOtp = async () => {
-  const otppayload = {
-    ContactOrEmail: formData.emailOrPhone,
-    SelectedCountryCode: null,
-  };
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const data = JSON.parse(jsonPayload);
 
-  try {
-    const response = await otplogin(otppayload);
-    console.log("OTP Sent Successfully:", response.data);
+          localStorage.setItem("authToken", await encryptData(token));
+          localStorage.setItem("sub", await encryptData(data.sub));
+          localStorage.setItem("userId", await encryptData(data.UserId));
+          router.push('/dashboard');
+        } catch (error) {
+          console.error('Login Error:', error);
+          toast.error('Login failed. Please try again.');
+        }
+      } else {
+        // OTP Login Logic - Always send all 4 fields with conditional null values
+        const input = values.emailOrPhone;
+        const countryCode = values.countryCode;
 
-    // ✅ Switch UI to OTP input mode
-    setLoginMode("OTP");
+        let payload;
 
-    // ✅ Start timer
-    setTimer(60);
-    setShowResendOtp(false);
+        // Determine if input is phone number or email and construct payload with conditional nulls
+        if (isPhoneNumber(input)) {
+          // For phone number: Email = null, PhoneNumber = input, CountryCode = selected value, Otp = entered otp
+          payload = {
+            Email: null,
+            PhoneNumber: input,
+            CountryCode: countryCode,
+            Otp: values.otp
+          };
+        } else {
+          // For email: Email = input, PhoneNumber = null, CountryCode = null, Otp = entered otp
+          payload = {
+            Email: input,
+            PhoneNumber: null,
+            CountryCode: null,
+            Otp: values.otp
+          };
+        }
 
-  } catch (error) {
-    console.error("OTP Send Error:", error);
-  }
-};
+        try {
+          const response = await LoginWithOTPhahaha(payload);
+          localStorage.setItem("userName", await (response.data.data.username));
+          localStorage.setItem("isEmailVerified", await (response.data.data.isEmailVerified));
+    localStorage.setItem("isPhoneVerified", await (response.data.data.isPhoneVerified));
+          toast.success(`${response.data.message}`);
+          const token = response.data.data.token;
 
-  // const handleGetOtp = async() => {
-  
-  //  const otppayload = {
-  //     ContactOrEmail: formData.emailOrPhone,
-  //     SelectedCountryCode: null
-  //   };
-  //   try {
-  //     const response = await otplogin(otppayload);
-  //     //router.push("/Dashboard");
-  //     console.log('Login Success:', response.data);
+          // Decode and store token (same as password login)
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const data = JSON.parse(jsonPayload);
 
-  //     // Add further logic: save token, redirect, etc.
-  //   } catch (error) {
-  //     console.error('Login Error:', error);
-  //     // Show error to user (optional)
-  //   }
-  //   console.log('OTP login:', formData);
-  //   // handle OTP login logic
-  // }
-  
-  
+          localStorage.setItem("authToken", await encryptData(token));
+          localStorage.setItem("sub", await encryptData(data.sub));
+          localStorage.setItem("userId", await encryptData(data.UserId));
+          router.push('/dashboard');
+        } catch (error) {
+          console.error('OTP Login Error:', error);
+          const err = error as any;
+          toast.error(`${err.response.data.message}`);
+        }
+      }
+    },
+  });
 
-  // const handleLogin = () => {
-  //   if (loginMode === 'password') {
-  //     console.log('Password login:', formData);
+  const handleGetOtp = async () => {
+    const input = formik.values.emailOrPhone;
+    const countryCode = formik.values.countryCode;
 
-  //     // Login(formData)
-  //   } else {
-  //     console.log('OTP login:', formData);
-  //   }
-  // };
-const handleLogin = async () => {
-  if (loginMode === 'password') {
-    const payload = {
-      Username: formData.emailOrPhone,
-      Password: formData.password
-    };
+    let payload;
 
-    console.log('Login Payload:', payload);
-
-    try {
-      const response = await Login(payload);
-      router.push("/Dashboard");
-      console.log('Login Success:', response.data);
-
-      // Add further logic: save token, redirect, etc.
-    } catch (error) {
-      console.error('Login Error:', error);
-      // Show error to user (optional)
+    // Determine if input is phone number or email and construct payload with conditional nulls
+    if (isPhoneNumber(input)) {
+      // For phone number: Email = null, PhoneNumber = input, CountryCode = selected value
+      payload = {
+        Email: null,
+        PhoneNumber: input,
+        CountryCode: countryCode
+      };
+    } else {
+      // For email: Email = input, PhoneNumber = null, CountryCode = null
+      payload = {
+        Email: input,
+        PhoneNumber: null,
+        CountryCode: null
+      };
     }
 
-  } else {
-    console.log('OTP login:', formData);
-    
-  }
-};
-
-
-
-  const handleResendOtp = () => {
-    setTimer(60);
-    setShowResendOtp(false);
-    console.log('Resending OTP');
+    try {
+      await LoginOTp(payload);
+      setTimer(60);
+      setShowResendOtp(false);
+      toast.success('OTP sent successfully');
+    } catch (error) {
+      console.error('OTP Send Error:', error);
+      toast.error('Failed to send OTP');
+    }
   };
 
   const toggleLoginMode = () => {
     setLoginMode(prev => (prev === 'password' ? 'OTP' : 'password'));
+    formik.resetForm();
   };
 
   return (
-    <Home>
-      <div className="flex flex-col">
-        {/* Main Content */}
-        <div className="flex flex-1 w-screen bg-gray-100">
-          {/* Left Side - Image */}
-          <div className="hidden lg:flex lg:w-1/2 p-8 items-center justify-center">
-            <img
-              src="/assets/login-samanta-w-bg.png"
-              alt="Hfiles"
-              className="w-full h-auto max-h-[80vh] object-contain"
-            />
-          </div>
+    <DynamicPage>
+      <div className="w-full h-[calc(100vh-80px)] flex flex-col md:flex-row bg-gray-100">
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-6">
+          <img
+            src="/assets/login-samanta-w-bg.png"
+            alt="Hfiles"
+            className="w-full max-w-[500px] h-auto object-contain"
+          />
+        </div>
 
-          {/* Right Side - Login Form */}
-          <div
-            className="w-full lg:w-1/2 flex justify-center bg-[#002FA7]"
-            style={{ paddingTop: isTabletOrLarger ? '192px' : '0px' }}
-          >
-            <div className="w-full max-w-md px-4">
-              {/* Logo and Welcome */}
-              <div className="text-center mb-8">
-                <img
-                  src="/Sign Up Page/Hfiles Logo.png"
-                  alt="Hfiles Logo"
-                  className="w-32 mx-auto mb-4"
-                />
-                <h1 className="text-white text-3xl font-bold">Welcome Back!</h1>
+        <div className="w-full md:w-1/2 flex justify-center items-center bg-[#002FA7] py-10">
+          <form onSubmit={formik.handleSubmit} className="w-full max-w-md px-4">
+            <div className="text-center mb-8">
+              <img
+                src="/Sign Up Page/Hfiles Logo.png"
+                alt="Hfiles Logo"
+                className="w-28 mx-auto mb-4"
+              />
+              <h1 className="text-white text-3xl font-bold">Welcome Back!</h1>
+            </div>
+
+            <div className="relative mb-6">
+              <div
+                className={`bg-white rounded-full border overflow-hidden 
+      ${formik.touched.emailOrPhone && formik.errors.emailOrPhone ? 'border-red-400' : 'border-gray-300'}
+      focus-within:ring-2 focus-within:ring-yellow-400 focus-within:border-transparent`}
+              >
+                <div className="flex items-center">
+                  {/* Conditionally show country code dropdown */}
+                  {isPhoneNumber(formik.values.emailOrPhone) && (
+                    <>
+                      <select
+                        name="countryCode"
+                        aria-label="Country Code"
+                        value={formik.values.countryCode}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        className="w-20 truncate border-0 bg-transparent py-3 pl-2 pr-1 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                      >
+                        {Array.isArray(listCountyCode) &&
+                          listCountyCode.map((country) => (
+                            <option key={country.dialingCode} value={country.dialingCode}>
+                              {country.country} {country.dialingCode}
+                            </option>
+                          ))}
+                      </select>
+                      <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                    </>
+                  )}
+
+                  {/* Input for phone/email */}
+                  <input
+                    type="tel"
+                    name="emailOrPhone"
+                    placeholder="Email Id / Contact No."
+                    value={formik.values.emailOrPhone}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700"
+                  />
+                </div>
               </div>
 
-              {/* Email/Phone Input */}
+              {/* Error Message */}
+              {formik.touched.emailOrPhone && formik.errors.emailOrPhone && (
+                <div className="px-4 pb-2">
+                  <p className="text-red-500 text-xs">{formik.errors.emailOrPhone}</p>
+                </div>
+              )}
+            </div>
+
+            {loginMode === 'password' && (
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    placeholder="Password"
+                    value={formik.values.password}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className="w-full px-6 py-3 rounded-full pr-12 bg-white text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+                {formik.touched.password && formik.errors.password && (
+                  <p className="text-yellow-300 text-sm mt-1">{formik.errors.password}</p>
+                )}
+                <div className="text-right mt-2">
+                  <a href="/forgot-password" className="text-yellow-400 text-sm font-semibold">
+                    Forgot Password?
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {loginMode === 'OTP' && timer > 0 && (
               <div className="mb-6">
                 <input
                   type="text"
-                  name="emailOrPhone"
-                  value={formData.emailOrPhone}
-                  onChange={handleInputChange}
-                  placeholder="Email Id / Contact No."
-                  className="w-full px-6 py-3 rounded-full border-none outline-none bg-white custom-inline-padding"
-                  required
+                  name="otp"
+                  placeholder="Enter OTP"
+                  value={formik.values.otp}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  className="w-full px-6 py-3 rounded-full bg-white text-sm outline-none"
                 />
-              </div>
-
-              {/* Password Input */}
-              {loginMode === 'password' && (
-                <div className="mb-6">
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="Password"
-                      className="w-full px-6 py-3 rounded-full border-none outline-none pr-12 bg-white"
-                      required
-                    />
+                {formik.touched.otp && formik.errors.otp && (
+                  <p className="text-yellow-300 text-sm mt-1">{formik.errors.otp}</p>
+                )}
+                <div className="text-right mt-2 text-white text-sm">
+                  <span>Time remaining: {formatTime(timer)}</span>
+                  {showResendOtp && (
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
+                      onClick={handleGetOtp}
+                      className="text-yellow-400 font-semibold ml-4"
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      Resend OTP
                     </button>
-                  </div>
-                  <div className="text-right mt-2">
-                    <a href="/forgot-password" className="text-yellow-400 hover:text-yellow-300 text-sm font-semibold">
-                      Forgot Password?
-                    </a>
-                  </div>
+                  )}
                 </div>
-              )}
-
-              {/* OTP Input */}
-              {loginMode === 'OTP' && timer > 0 && (
-                <div className="mb-6">
-                  <input
-                    type="text"
-                    name="otp"
-                    value={formData.otp}
-                    onChange={handleInputChange}
-                    placeholder="Enter OTP"
-                    className="w-full px-6 py-3 rounded-full border-none outline-none bg-white"
-                    required
-                  />
-                  <div className="text-right mt-2 text-white text-sm">
-                    {timer > 0 && (
-                      <span>Time remaining: {formatTime(timer)}</span>
-                    )}
-                    {showResendOtp && (
-                      <button
-                        type="button"
-                        onClick={handleResendOtp}
-                        className="text-yellow-400 hover:text-yellow-300 font-semibold ml-4"
-                      >
-                        Resend OTP
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Get OTP Button */}
-              {loginMode === 'OTP' && timer === 0 && (
-                <div className="mb-6">
-                  <button
-                    type="button"
-                    onClick={handleGetOtp}
-                    className="w-full bg-yellow-400 text-black py-3 rounded-full font-semibold hover:bg-yellow-300 transition-colors"
-                  >
-                    GET OTP
-                  </button>
-                </div>
-              )}
-
-              {/* Login Button */}
-              {(loginMode === 'password' || (loginMode === 'OTP' && timer > 0)) && (
-                <div className="mb-6">
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    className="w-full bg-yellow-400 text-black py-3 rounded-full font-semibold hover:bg-yellow-300 transition-colors"
-                  >
-                    Login
-                  </button>
-                </div>
-              )}
-
-              {/* Or Divider */}
-              <div className="text-center mb-6">
-                <span className="text-white">Or</span>
               </div>
+            )}
 
-              {/* Toggle Login Mode */}
+            {loginMode === 'OTP' && timer === 0 && (
               <div className="mb-6">
                 <button
                   type="button"
-                  onClick={toggleLoginMode}
-                  className="w-full bg-transparent border-2 border-yellow-400 text-yellow-400 py-3 rounded-full font-semibold hover:bg-yellow-400 hover:text-black transition-colors"
+                  onClick={handleGetOtp}
+                  className="w-full bg-yellow-400 text-black py-3 rounded-full font-semibold hover:bg-yellow-300"
                 >
-                  {loginMode === 'password' ? 'Login with OTP' : 'Login with Password'}
+                  GET OTP
                 </button>
               </div>
+            )}
 
-              {/* Sign Up Link */}
-              <div className="text-center">
-                <span className="text-white">
-                  New User? Click{' '}
-                  <a href="/signUp" className="text-yellow-400 hover:text-yellow-300 font-semibold">
-                    here
-                  </a>{' '}
-                  to Sign Up
-                </span>
+            {(loginMode === 'password' || (loginMode === 'OTP' && timer > 0)) && (
+              <div className="mb-6">
+                <button
+                  type="submit"
+                  className="w-full bg-yellow-400 text-black py-3 rounded-full font-semibold hover:bg-yellow-300"
+                >
+                  Login
+                </button>
               </div>
+            )}
+
+            <div className="text-center mb-6">
+              <span className="text-white">Or</span>
             </div>
-          </div>
+
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={toggleLoginMode}
+                className="w-full border-2 border-yellow-400 text-yellow-400 py-3 rounded-full font-semibold hover:bg-yellow-400 hover:text-black"
+              >
+                {loginMode === 'password' ? 'Login with OTP' : 'Login with Password'}
+              </button>
+            </div>
+
+            <div className="text-center">
+              <span className="text-white text-sm">
+                New User? Click{' '}
+                <a href="/signUp" className="text-yellow-400 font-semibold">
+                  here
+                </a>{' '}
+                to Sign Up
+              </span>
+            </div>
+          </form>
         </div>
-
-
+        <ToastContainer />
       </div>
-    </Home>
+    </DynamicPage>
   );
 }

@@ -1,0 +1,478 @@
+'use client'
+import React, { useEffect, useState } from 'react';
+import { Plus, X, Upload } from 'lucide-react';
+import MasterHome from '../components/MasterHome';
+import { useRouter } from 'next/navigation';
+import { decryptData } from '../utils/webCrypto';
+import { MemberList, ReportAdd } from '../services/HfilesServiceApi';
+import { toast, ToastContainer } from 'react-toastify';
+
+type User = {
+    id: number;
+    name: string;
+    profileURL?: string;
+};
+
+const MedicalDashboard = () => {
+    const [selectedUser, setSelectedUser] = useState<string>('');
+    const [userNameFromStorage, setUserNameFromStorage] = useState<string>('');
+    const [users, setUsers] = useState<User[]>();
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [reportType, setReportType] = useState<string>('');
+    const [fileName, setFileName] = useState<string>('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const router = useRouter();
+
+    const reportTypes = [
+        { Id: 3, Name: "LAB REPORT" },
+        { Id: 4, Name: "DENTAL REPORT" },
+        { Id: 5, Name: "IMMUNIZATION" },
+        { Id: 6, Name: "MEDICATIONS/PRESCRIPTION" },
+        { Id: 7, Name: "RADIOLOGY" },
+        { Id: 8, Name: "OPTHALMOLOGY" },
+        { Id: 9, Name: "SPECIAL REPORT" },
+        { Id: 10, Name: "INVOICES/MEDICLAIM INSURANCE" },
+    ];
+
+    const getUserId = async (): Promise<number> => {
+        try {
+            const encryptedUserId = localStorage.getItem("userId");
+            if (!encryptedUserId) {
+                return 0;
+            }
+            const userIdStr = await decryptData(encryptedUserId);
+            return parseInt(userIdStr, 10);
+        } catch (error) {
+            console.error("Error getting userId:", error);
+            return 0;
+        }
+    };
+
+    const ListMember = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+            const response = await MemberList(currentUserId);
+            if (response && response.data && response.data.data) {
+                const formattedUsers = [
+                    ...response.data.data.independentMembers,
+                    ...response.data.data.dependentMembers,
+                ].map((member: any) => ({
+                    id: member.id,
+                    name: `${member.firstName} ${member.lastName}`,
+                    avatar: member.firstName?.charAt(0).toUpperCase() || '?',
+                    profileURL: member.profileURL,
+                }));
+
+                setUsers(formattedUsers);
+            }
+        } catch (error) {
+            console.error("Error fetching members:", error);
+            toast.error("Failed to load members. Please try again.");
+        }
+    };
+
+    useEffect(() => {
+        ListMember();
+    }, [])
+
+    useEffect(() => {
+        const storedName = localStorage.getItem('userName');
+        if (storedName) {
+            setUserNameFromStorage(storedName);
+            setSelectedUser(storedName)
+        }
+    }, []);
+
+    // File validation function
+    const validateFile = (file: File): boolean => {
+        const maxSize = 10 * 1024 * 1024;
+        const allowedTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/jpg',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ];
+
+        if (file.size > maxSize) {
+            toast.error("File size must be less than 10MB");
+            return false;
+        }
+        return true;
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (validateFile(file)) {
+                setSelectedFile(file);
+                if (!fileName) {
+                    const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+                    setFileName(nameWithoutExtension);
+                }
+            } else {
+                event.target.value = '';
+            }
+        }
+    };
+
+    const handleSubmitReport = async () => {
+        if (!reportType || !fileName || !selectedFile) {
+            toast.error("Please fill in all required fields.");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            const userId = await getUserId();
+            if (!userId || userId === 0) {
+                toast.error("Invalid or missing user ID. Please log in again.");
+                return;
+            }
+            const selectedReportType = reportTypes.find(type => type.Name === reportType);
+            if (!selectedReportType) {
+                toast.error("Invalid report type selected.");
+                return;
+            }
+            const formData = new FormData();
+            formData.append("ReportName", fileName.trim());
+            formData.append("ReportType", selectedReportType.Name.toString());
+            formData.append("ReportFile", selectedFile);
+            const response = await ReportAdd(userId, formData);
+            if (response && response.data) {
+                const message = response.data.message;
+                toast.success(message);
+                setReportType("");
+                setFileName("");
+                setSelectedFile(null);
+                setIsModalOpen(false);
+            } else {
+                toast.error("Failed to add report. Please try again.");
+            }
+
+        } catch (error: any) {
+            console.log(error, "error");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const closeModal = () => {
+        if (isSubmitting) return;
+        setIsModalOpen(false);
+        setReportType('');
+        setFileName('');
+        setSelectedFile(null);
+    };
+
+    return (
+        <MasterHome>
+            <div className="flex h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-139px)] 2xl:h-[calc(100vh-140px)] bg-gray-50">
+                {/* Left Sidebar */}
+                <div className="w-50 bg-white shadow-lg flex flex-col items-center py-6">
+                    {/* Top Divider */}
+                    <p className='font-bold text-black text-lg cursor-pointer' onClick={() => setSelectedUser(userNameFromStorage)}>{userNameFromStorage || 'No Name'}</p>
+                    <div className="w-full border-t mb-6"></div>
+
+                    {/* Users List */}
+                    <div className="flex flex-col items-center w-full space-y-2">
+                        {users?.map((user, index) => (
+                            <div key={user.id} className="flex flex-col items-center w-full">
+                                <div
+                                    className={`w-16 h-16 rounded-full overflow-hidden border border-gray-300 cursor-pointer hover:scale-110 transition-transform ${selectedUser === user.name ? 'ring-2 ring-blue-400' : ''
+                                        }`}
+                                    onClick={() => setSelectedUser(user.name)}
+                                >
+                                    <img
+                                        src={user?.profileURL}
+                                        alt={user.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            // Fallback if image fails to load
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                        }}
+                                    />
+                                    {!user.profileURL && (
+                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">
+                                            {user.name.charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-sm font-medium text-gray-800 mt-1">{user.name}</p>
+                                {index !== users.length - 1 && (
+                                    <hr className="w-10/12 border-t border-gray-300 my-3" />
+                                )}
+                            </div>
+                        ))}
+
+                        {/* Add Member Button */}
+                        <div className="flex flex-col items-center mt-2">
+                            <button
+                                onClick={() => router.push('/addMember')}
+                                className="w-10 h-10 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
+                            >
+                                <Plus size={18} />
+                            </button>
+                            <p className="text-xs text-gray-500 mt-2">Add Member</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="flex-1 relative overflow-hidden">
+                    {/* Background gradient */}
+                    <div className="absolute"></div>
+
+                    {/* Medical Categories positioned around the center */}
+                    <div className="relative h-full flex items-center justify-center">
+                        {/* Layout container */}
+                        <div className="relative w-full min-w-7xl grid grid-cols-3 gap-8 items-center">
+
+                            {/* Left Column */}
+                            <div className="relative h-[500px] w-[300px] flex flex-col items-start justify-center">
+                                {/* LAB REPORTS */}
+                                <div className="absolute left-15 top-0 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <span className="text-sm font-semibold text-blue-700">LAB REPORTS</span>
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/85ba70165c3202c8ddd061ad6f2c3c0631c4c087.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                </div>
+
+                                {/* IMMUNISATION */}
+                                <div className="absolute left-6 top-24 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <span className="text-sm font-semibold text-blue-700">IMMUNISATION</span>
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/fe5ee132f6a4493c0e769828bd1dbb0608178822.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                </div>
+
+                                {/* MEDICATIONS/PRESCRIPTION */}
+                                <div className="absolute left-2 top-48 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <span className="text-sm font-semibold text-blue-700">MEDICATIONS/
+                                        PRESCRIPTION</span>
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/a1edce9397deefd31218a308aacd0eb5cc1ffdfd.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                </div>
+
+                                {/* RADIOLOGY */}
+                                <div className="absolute left-9 top-72 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <span className="text-sm font-semibold text-blue-700">RADIOLOGY</span>
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/4172b4920e863c393033ca338427fa942e7816e5.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Center Image & Name */}
+                            <div className="flex flex-col items-center justify-center">
+                                <img
+                                    src="/Group 714.png"
+                                    alt="Medical Character"
+                                    className="w-full h-full object-contain mb-4"
+                                />
+                                <h2 className="text-xl font-bold text-gray-800">{selectedUser}</h2>
+                            </div>
+
+                            {/* Right Column */}
+                            <div className="relative h-[500px] w-[300px] flex flex-col items-end justify-center ml-30">
+                                {/* OPHTHALMOLOGY */}
+                                <div className="absolute right-12 top-0 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/0fc647c4f0b0490c5f5c928e2de0800fc71ad927.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-blue-700">OPHTHALMOLOGY</span>
+                                </div>
+
+                                {/* DENTAL REPORT */}
+                                <div className="absolute right-6 top-24 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/d6819f0d6def5d9acaf5f71284399dffd7f24d4c.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-blue-700">DENTAL REPORT</span>
+                                </div>
+
+                                {/* SPECIAL REPORTS */}
+                                <div className="absolute right-2 top-48 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/24965f56eaf61ff937c105970ed368f780192e60.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-blue-700">SPECIAL REPORTS</span>
+                                </div>
+
+                                {/* MEDICINE & INVOICE */}
+                                <div className="absolute right-9 top-72 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                    <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
+                                        <img src="/95dad8e8466d68639e4a8200d6fa809742f20080.png" alt="icon" className="w-8 h-8 object-contain" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-blue-700">MEDICINE & INVOICE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Sidebar */}
+                <div className="w-64  bg-white shadow-lg p-6 flex flex-col justify-between">
+                    {/* Top Section */}
+                    <div className="space-y-6">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            disabled={isSubmitting}
+                            className="w-full primary text-white py-4 px-4 rounded-lg font-semibold shadow-md hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? "Adding Report..." : "Add Reports"}
+                        </button>
+
+                        {/* All Reports Card */}
+                        <div className="bg-yellow-200 border p-4 rounded-lg text-center shadow">
+                            <h3 className="font-semibold text-gray-800 text-lg">All Reports</h3>
+                        </div>
+                    </div>
+
+                    {/* Bottom Section */}
+                    <div className="space-y-4 mt-6">
+                        {/* Storage Used */}
+                        <div className="border p-4 rounded-lg text-center shadow">
+                            <p className="text-gray-800 font-semibold text-sm">7.17 MB<br />Storage Used</p>
+                        </div>
+
+                        {/* Storage Left */}
+                        <div className="border p-4 rounded-lg text-center shadow border-blue-400">
+                            <p className="text-gray-800 font-semibold text-sm">
+                                92.83 of 100<br />MB Left
+                            </p>
+                        </div>
+
+                        {/* Contact Section */}
+                        <div className="text-sm text-gray-600 border rounded-lg p-4 text-center shadow">
+                            <p className="mb-1">Need Storage?</p>
+                            <p className="text-blue-600 cursor-pointer hover:underline">Contact Us...</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Add Reports Modal */}
+                {isModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+                            {/* Modal Header */}
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-gray-800">Add New Report</h2>
+                                <button
+                                    onClick={closeModal}
+                                    disabled={isSubmitting}
+                                    className="text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            {/* Modal Form */}
+                            <div className="space-y-4">
+                                {/* Report Type Dropdown */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Report Type *
+                                    </label>
+                                    <select
+                                        name="reportType"
+                                        value={reportType}
+                                        onChange={(e) => setReportType(e.target.value)}
+                                        disabled={isSubmitting}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                                        required
+                                    >
+                                        <option value="" disabled>Select a report</option>
+                                        {reportTypes.map((type) => (
+                                            <option key={type.Id} value={type.Name}>
+                                                {type.Name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* File Name */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        File Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={fileName}
+                                        onChange={(e) => setFileName(e.target.value)}
+                                        disabled={isSubmitting}
+                                        placeholder="Enter file name"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                                        required
+                                    />
+                                </div>
+
+                                {/* File Upload */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Select File *
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            onChange={handleFileChange}
+                                            disabled={isSubmitting}
+                                            className="hidden"
+                                            id="file-upload"
+                                            accept="*/*"
+                                        />
+                                        <label
+                                            htmlFor="file-upload"
+                                            className={`w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            <div className="text-center">
+                                                <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                                                <span className="text-sm text-gray-600">
+                                                    {selectedFile ? selectedFile.name : 'Click to upload file'}
+                                                </span>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    All file types supported (Max: 10MB)
+                                                </p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="flex space-x-3 mt-6">
+                                <button
+                                    onClick={closeModal}
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSubmitReport}
+                                    disabled={!reportType || !fileName || !selectedFile || isSubmitting}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {isSubmitting ? "Adding Report..." : "Add Report"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+            <ToastContainer />
+        </MasterHome>
+    );
+};
+
+export default MedicalDashboard;
