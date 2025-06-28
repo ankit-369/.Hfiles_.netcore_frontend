@@ -39,7 +39,14 @@ const DynamicHeader: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => 
         {/* Desktop Navigation */}
         <nav className="hidden sm:flex gap-4 md:gap-6 items-center text-sm md:text-base font-semibold">
           <div className="cursor-pointer hover:underline">About Us</div>
-          <div className="cursor-pointer hover:underline">Article</div>
+          <div className="cursor-pointer hover:underline"><a
+  href="https://articles.hfiles.in/"
+  rel="noopener noreferrer"
+  className="cursor-pointer hover:underline"
+>
+  Article
+</a>
+</div>
           <button
             className="bg-yellow-400 text-blue-700 px-4 py-2 rounded hover:bg-yellow-300 transition font-bold"
             onClick={handleSignIn}
@@ -51,9 +58,8 @@ const DynamicHeader: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => 
 
       {/* Sidebar Drawer for Mobile */}
       <div
-        className={`fixed top-0 left-0 h-full w-full bg-white text-blue-800 z-50 shadow-lg transform transition-transform duration-300 sm:hidden ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 h-full w-full bg-white text-blue-800 z-50 shadow-lg transform transition-transform duration-300 sm:hidden ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold">Menu</h2>
@@ -63,7 +69,15 @@ const DynamicHeader: React.FC<HeaderProps> = ({ isMenuOpen, setIsMenuOpen }) => 
         </div>
         <div className="flex flex-col p-4 gap-4 font-semibold">
           <div className="cursor-pointer hover:underline">About Us</div>
-          <div className="cursor-pointer hover:underline">Article</div>
+          <div className="cursor-pointer hover:underline"><a
+            href="https://articles.hfiles.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cursor-pointer hover:underline"
+          >
+            Article
+          </a>
+          </div>
           <button
             className="bg-yellow-400 text-blue-700 px-4 py-2 rounded hover:bg-yellow-300 w-fit font-bold"
             onClick={() => {

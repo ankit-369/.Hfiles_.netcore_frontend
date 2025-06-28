@@ -103,7 +103,6 @@ export default function LoginPage() {
     },
     validationSchema,
     onSubmit: async (values) => {
-      debugger
       if (loginMode === 'password') {
         const payload = {
           email: values.emailOrPhone,

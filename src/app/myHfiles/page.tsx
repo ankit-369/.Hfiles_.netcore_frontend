@@ -15,7 +15,9 @@ type User = {
 
 const MedicalDashboard = () => {
     const [selectedUser, setSelectedUser] = useState<string>('');
+    const [selectedUserId, setSelectedUserId] = useState<number>(0);
     const [userNameFromStorage, setUserNameFromStorage] = useState<string>('');
+    const [userIdFromStorage, setUserIdFromStorage] = useState<number>(0);
     const [users, setUsers] = useState<User[]>();
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [reportType, setReportType] = useState<string>('');
@@ -76,19 +78,52 @@ const MedicalDashboard = () => {
         }
     };
 
+    const handleUserSelection = async (userName: string, userId: number) => {
+        setSelectedUser(userName);
+        setSelectedUserId(userId);
+    };
+
+    const handleReportCategoryClick = (reportTypeName: string) => {
+        const currentUserId = selectedUserId || userIdFromStorage;
+        if (!currentUserId) {
+            toast.error("Please select a user first.");
+            return;
+        }
+
+        router.push(`/reportsPage?userId=${currentUserId}&reportType=${encodeURIComponent(reportTypeName)}`);
+    };
+
+    const handleAllReportsClick = () => {
+        const currentUserId = selectedUserId || userIdFromStorage;
+        if (!currentUserId) {
+            toast.error("Please select a user first.");
+            return;
+        }
+
+        router.push(`/allReports`);
+    };
+
+
     useEffect(() => {
         ListMember();
     }, [])
 
     useEffect(() => {
-        const storedName = localStorage.getItem('userName');
-        if (storedName) {
-            setUserNameFromStorage(storedName);
-            setSelectedUser(storedName)
-        }
+        const loadUserFromStorage = async () => {
+            const storedName = localStorage.getItem('userName');
+            const storedUserId = await getUserId();
+
+            if (storedName && storedUserId) {
+                setUserNameFromStorage(storedName);
+                setUserIdFromStorage(storedUserId);
+                setSelectedUser(storedName);
+                setSelectedUserId(storedUserId);
+            }
+        };
+
+        loadUserFromStorage();
     }, []);
 
-    // File validation function
     const validateFile = (file: File): boolean => {
         const maxSize = 10 * 1024 * 1024;
         const allowedTypes = [
@@ -132,7 +167,7 @@ const MedicalDashboard = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            const userId = await getUserId();
+            const userId = selectedUserId || userIdFromStorage;
             if (!userId || userId === 0) {
                 toast.error("Invalid or missing user ID. Please log in again.");
                 return;
@@ -179,7 +214,12 @@ const MedicalDashboard = () => {
                 {/* Left Sidebar */}
                 <div className="w-50 bg-white shadow-lg flex flex-col items-center py-6">
                     {/* Top Divider */}
-                    <p className='font-bold text-black text-lg cursor-pointer' onClick={() => setSelectedUser(userNameFromStorage)}>{userNameFromStorage || 'No Name'}</p>
+                    <p
+                        className='font-bold text-black text-lg cursor-pointer'
+                        onClick={() => handleUserSelection(userNameFromStorage, userIdFromStorage)}
+                    >
+                        {userNameFromStorage || 'No Name'}
+                    </p>
                     <div className="w-full border-t mb-6"></div>
 
                     {/* Users List */}
@@ -189,7 +229,7 @@ const MedicalDashboard = () => {
                                 <div
                                     className={`w-16 h-16 rounded-full overflow-hidden border border-gray-300 cursor-pointer hover:scale-110 transition-transform ${selectedUser === user.name ? 'ring-2 ring-blue-400' : ''
                                         }`}
-                                    onClick={() => setSelectedUser(user.name)}
+                                    onClick={() => handleUserSelection(user.name, user.id)}
                                 >
                                     <img
                                         src={user?.profileURL}
@@ -218,7 +258,7 @@ const MedicalDashboard = () => {
                         <div className="flex flex-col items-center mt-2">
                             <button
                                 onClick={() => router.push('/addMember')}
-                                className="w-10 h-10 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
+                                className="w-10 h-10 border-2 border-dashed cursor-pointer border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
                             >
                                 <Plus size={18} />
                             </button>
@@ -240,7 +280,10 @@ const MedicalDashboard = () => {
                             {/* Left Column */}
                             <div className="relative h-[500px] w-[300px] flex flex-col items-start justify-center">
                                 {/* LAB REPORTS */}
-                                <div className="absolute left-15 top-0 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute left-15 top-0 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("LAB REPORT")}
+                                >
                                     <span className="text-sm font-semibold text-blue-700">LAB REPORTS</span>
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/85ba70165c3202c8ddd061ad6f2c3c0631c4c087.png" alt="icon" className="w-8 h-8 object-contain" />
@@ -248,7 +291,10 @@ const MedicalDashboard = () => {
                                 </div>
 
                                 {/* IMMUNISATION */}
-                                <div className="absolute left-6 top-24 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute left-6 top-24 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("IMMUNIZATION")}
+                                >
                                     <span className="text-sm font-semibold text-blue-700">IMMUNISATION</span>
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/fe5ee132f6a4493c0e769828bd1dbb0608178822.png" alt="icon" className="w-8 h-8 object-contain" />
@@ -256,7 +302,10 @@ const MedicalDashboard = () => {
                                 </div>
 
                                 {/* MEDICATIONS/PRESCRIPTION */}
-                                <div className="absolute left-2 top-48 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute left-2 top-48 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("MEDICATIONS/PRESCRIPTION")}
+                                >
                                     <span className="text-sm font-semibold text-blue-700">MEDICATIONS/
                                         PRESCRIPTION</span>
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
@@ -265,7 +314,10 @@ const MedicalDashboard = () => {
                                 </div>
 
                                 {/* RADIOLOGY */}
-                                <div className="absolute left-9 top-72 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute left-9 top-72 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("RADIOLOGY")}
+                                >
                                     <span className="text-sm font-semibold text-blue-700">RADIOLOGY</span>
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/4172b4920e863c393033ca338427fa942e7816e5.png" alt="icon" className="w-8 h-8 object-contain" />
@@ -286,7 +338,10 @@ const MedicalDashboard = () => {
                             {/* Right Column */}
                             <div className="relative h-[500px] w-[300px] flex flex-col items-end justify-center ml-30">
                                 {/* OPHTHALMOLOGY */}
-                                <div className="absolute right-12 top-0 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute right-12 top-0 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("OPTHALMOLOGY")}
+                                >
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/0fc647c4f0b0490c5f5c928e2de0800fc71ad927.png" alt="icon" className="w-8 h-8 object-contain" />
                                     </div>
@@ -294,7 +349,10 @@ const MedicalDashboard = () => {
                                 </div>
 
                                 {/* DENTAL REPORT */}
-                                <div className="absolute right-6 top-24 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute right-6 top-24 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("DENTAL REPORT")}
+                                >
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/d6819f0d6def5d9acaf5f71284399dffd7f24d4c.png" alt="icon" className="w-8 h-8 object-contain" />
                                     </div>
@@ -302,7 +360,10 @@ const MedicalDashboard = () => {
                                 </div>
 
                                 {/* SPECIAL REPORTS */}
-                                <div className="absolute right-2 top-48 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute right-2 top-48 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("SPECIAL REPORT")}
+                                >
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/24965f56eaf61ff937c105970ed368f780192e60.png" alt="icon" className="w-8 h-8 object-contain" />
                                     </div>
@@ -310,7 +371,10 @@ const MedicalDashboard = () => {
                                 </div>
 
                                 {/* MEDICINE & INVOICE */}
-                                <div className="absolute right-9 top-72 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full">
+                                <div
+                                    className="absolute right-9 top-72 cursor-pointer flex items-center justify-between w-60 px-3 py-2 rounded-full hover:bg-blue-50 transition-colors"
+                                    onClick={() => handleReportCategoryClick("INVOICES/MEDICLAIM INSURANCE")}
+                                >
                                     <div className="w-15 h-15 rounded-full border border-gray-400 flex items-center justify-center">
                                         <img src="/95dad8e8466d68639e4a8200d6fa809742f20080.png" alt="icon" className="w-8 h-8 object-contain" />
                                     </div>
@@ -328,13 +392,13 @@ const MedicalDashboard = () => {
                         <button
                             onClick={() => setIsModalOpen(true)}
                             disabled={isSubmitting}
-                            className="w-full primary text-white py-4 px-4 rounded-lg font-semibold shadow-md hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full primary text-white py-4 px-4 cursor-pointer rounded-lg font-semibold shadow-md hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? "Adding Report..." : "Add Reports"}
                         </button>
 
                         {/* All Reports Card */}
-                        <div className="bg-yellow-200 border p-4 rounded-lg text-center shadow">
+                        <div className="bg-yellow-200 border cursor-pointer p-4 rounded-lg text-center shadow" onClick={handleAllReportsClick}>
                             <h3 className="font-semibold text-gray-800 text-lg">All Reports</h3>
                         </div>
                     </div>

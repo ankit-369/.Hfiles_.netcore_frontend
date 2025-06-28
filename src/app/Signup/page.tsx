@@ -26,9 +26,6 @@ const SignUp = () => {
   const [listCountyCode, setListCountryCode] = useState<any[]>([]);
 
 
-
-
-
   const ListCoutny = async () => {
     try {
       const response = await listCounty();
@@ -97,23 +94,19 @@ const SignUp = () => {
       .required('Please accept terms and conditions'),
   });
 
-  // Generate dynamic captcha with visual effects
   const generateDynamicCaptcha = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
     const specialChars = ['@', '#', '$', '%', '&', '*'];
     let result = '';
 
-    // Generate 5-6 characters mix of letters, numbers, and special chars
     for (let i = 0; i < 5; i++) {
       if (i === 2 && Math.random() > 0.5) {
-        // Sometimes add a special character in the middle
         result += specialChars[Math.floor(Math.random() * specialChars.length)];
       } else {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
       }
     }
 
-    // Generate random background pattern
     const patterns = [
       'linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0)',
       'linear-gradient(135deg, #e0e0e0 25%, transparent 25%, transparent 75%, #e0e0e0 75%, #e0e0e0)',
@@ -157,31 +150,18 @@ const SignUp = () => {
     getDecryptedTokenData();
   }, []);
 
-  // Format date for display (dd-mm-yyyy)
-  const formatDateForDisplay = (dateStr: string | number | Date) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  // Convert dd-mm-yyyy to yyyy-mm-dd for date input
   const convertToDateInputFormat = (ddmmyyyy: string) => {
     if (!ddmmyyyy || !ddmmyyyy.includes('-')) return '';
     const [day, month, year] = ddmmyyyy.split('-');
     return `${year}-${month}-${day}`;
   };
 
-  // Convert yyyy-mm-dd to dd-mm-yyyy for form
   const convertToDisplayFormat = (yyyymmdd: string) => {
     if (!yyyymmdd) return '';
     const [year, month, day] = yyyymmdd.split('-');
     return `${day}-${month}-${year}`;
   };
 
-  // Handle date change
   const handleDateChange = (dateValue: string) => {
     const formattedDate = convertToDisplayFormat(dateValue);
     formik.setFieldValue('dob', formattedDate);
@@ -206,15 +186,14 @@ const SignUp = () => {
     onSubmit: async (values) => {
       setIsSubmitting(true);
       try {
-        // Parse the country data and combine both values
         const countryData = JSON.parse(values.countryCode);
-        const combinedCountryCode = `${countryData.dialingCode}`; // e.g., "India +91"
+        const combinedCountryCode = `${countryData.dialingCode}`;
 
         const otpPayload = {
           firstName: values.firstName,
           email: values.email,
           phoneNumber: values.phone,
-          countryCode: combinedCountryCode, // Send both country and dialing code in one field
+          countryCode: combinedCountryCode,
         };
         const response = await SignUpOTPVerify(otpPayload);
         toast.success(`${response.data.message}`);
@@ -231,7 +210,6 @@ const SignUp = () => {
   });
 
 
-  // Timer for OTP resend
   useEffect(() => {
     let interval: string | number | NodeJS.Timeout | undefined;
     if (timer > 0) {
@@ -242,12 +220,10 @@ const SignUp = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
-  // Initialize captcha on component mount
   useEffect(() => {
     generateDynamicCaptcha();
   }, []);
 
-  // Update validation schema when captcha changes
   useEffect(() => {
     if (formik.values.captcha && formik.values.captcha !== captchaCode) {
       formik.setFieldError('captcha', 'Invalid captcha code');
@@ -259,7 +235,6 @@ const SignUp = () => {
     setOtpError('');
     setIsOtpSubmitting(true);
 
-    // Validate OTP length
     if (otp.length !== 6) {
       setOtpError('Please enter a valid 6-digit OTP');
       setIsOtpSubmitting(false);
@@ -297,7 +272,6 @@ const SignUp = () => {
 
       const token = response.data.data.token;
 
-      // Decode and store token (same as password login)
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(
@@ -356,12 +330,11 @@ const SignUp = () => {
   return (
     <DynamicPage>
       <div className="flex flex-col md:flex-row w-full h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-139px)] 2xl:h-[calc(100vh-140px)]">
-        {/* Left Side - Image (Hidden on Mobile) */}
-        <div className="hidden md:flex flex-1 bg-white items-center justify-center p-6">
+        <div className="hidden md:flex flex-1 bg-gradient-to-b from-white via-white to-cyan-200 items-center justify-center p-6">
           <div className="max-w-md text-center">
             <div className="relative">
               <img
-                src="/assets/signup-samanta.png"
+                src="/ac3693f001558bc88aa841575eb986cffb650260.png"
                 alt="Sign up illustration"
                 width={1000}
                 height={600}
@@ -371,17 +344,9 @@ const SignUp = () => {
           </div>
         </div>
 
-        {/* Right Side - Form */}
         <div
           className="flex-1 flex items-start md:items-center justify-center p-6 relative"
-          style={{
-            backgroundColor: '#0331B5',
-            backgroundImage: 'url("/Reception Page/002B.png")',
-            backgroundRepeat: 'no-repeat',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundAttachment: 'fixed',
-          }}
+
         >
           <div className="w-full max-w-2xl">
             <form onSubmit={formik.handleSubmit} className="space-y-4 md:space-y-6">
@@ -404,9 +369,9 @@ const SignUp = () => {
               {/* Form Fields */}
               <div className="space-y-3 ">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  {/* First Name */}
-                  <div className="relative">
-                    <User className="absolute left-3 top-4 h-5 w-5 text-yellow-400" />
+                  <div>
+
+                    {/* First Name */}
                     <input
                       type="text"
                       name="firstName"
@@ -414,7 +379,7 @@ const SignUp = () => {
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                       placeholder="First Name"
-                      className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
+                      className="w-full pl-4  py-3 rounded-lg bg-white border focus:outline-none focus:ring-0 "
                     />
                     {formik.touched.firstName && formik.errors.firstName && (
                       <p className="text-red-500 text-xs ">{formik.errors.firstName}</p>
@@ -423,7 +388,6 @@ const SignUp = () => {
 
                   {/* Last Name */}
                   <div className="relative">
-                    <User className="absolute left-3 top-4 h-5 w-5 text-yellow-400" />
                     <input
                       type="text"
                       name="lastName"
@@ -431,7 +395,7 @@ const SignUp = () => {
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                       placeholder="Last Name"
-                      className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
+                      className="w-full pl-4 py-3 rounded-lg bg-white border focus:outline-none focus:ring-0 "
                     />
                     {formik.touched.lastName && formik.errors.lastName && (
                       <p className="text-red-500 text-xs ">{formik.errors.lastName}</p>
@@ -440,20 +404,15 @@ const SignUp = () => {
 
                   {/* Date of Birth with Calendar */}
                   <div className="relative">
-                    <Calendar
-                      className="absolute left-3 top-4 h-5 w-5 text-yellow-400 cursor-pointer z-10"
-                      onClick={() => document.getElementById("dobPicker")?.focus()}
-                    />
-
                     <input
                       id="dobPicker"
                       type="date"
                       name="dob"
-                      value={convertToDateInputFormat(formik.values.dob)} // e.g., '1990-05-15'
+                      value={convertToDateInputFormat(formik.values.dob)}
                       onChange={(e) => handleDateChange(e.target.value)}
                       onBlur={formik.handleBlur}
-                      className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400 cursor-pointer"
-                      max={new Date().toISOString().split("T")[0]} // restrict future dates
+                      className="w-full pl-4   py-3 rounded-lg bg-white text-gray-500 border border-black focus:outline-none focus:ring-0 "
+                      max={new Date().toISOString().split("T")[0]}
                     />
 
                     {formik.touched.dob && formik.errors.dob && (
@@ -465,60 +424,50 @@ const SignUp = () => {
                   {/* Phone Number - Merged Input */}
                   <div className="relative">
                     <div
-                      className={`bg-white rounded-full border overflow-hidden 
-                              ${formik.touched.phone && formik.errors.phone ? 'border-red-400' : 'border-gray-300'}
-                              focus-within:ring-2 focus-within:ring-yellow-400 focus-within:border-transparent`}
+                      className={`flex items-center bg-white rounded-lg border px-4 
+      ${formik.touched.phone && formik.errors.phone ? 'border-red-400' : 'border-black'}
+      `}
                     >
-                      <div className="flex items-center">
-                        {/* Country Code Dropdown */}
-                        <select
-                          name="countryCode"
-                          aria-label="Country Code"
-                          value={formik.values.countryCode}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                          className="border-0 bg-transparent py-3 pl-4 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
-                          style={{ minWidth: '100px' }}
-                        >
-                          {Array.isArray(listCountyCode) &&
-                            listCountyCode.map((country, index) => (
-                              <option key={index} value={JSON.stringify({ country: country.country, dialingCode: country.dialingCode })}>
-                                {country.country} {country.dialingCode}
-                              </option>
-                            ))};
+                      {/* Country Code Selector */}
+                      <select
+                        name="countryCode"
+                        aria-label="Country Code"
+                        value={formik.values.countryCode}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        className="appearance-none bg-transparent text-blue-700 font-semibold text-sm w-10 focus:outline-none"
+                      >
+                        {Array.isArray(listCountyCode) &&
+                          listCountyCode.map((country, index) => (
+                            <option key={index} value={JSON.stringify({ country: country.country, dialingCode: country.dialingCode })}>
+                              {country.dialingCode}
+                            </option>
+                          ))}
+                      </select>
 
-
-
-                        </select>
-
-                        <div className="h-6 w-px bg-gray-300 mx-1"></div>
-
-                        {/* Phone Number Input */}
-                        <input
-                          type="tel"
-                          name="phone"
-                          aria-label="Phone Number"
-                          value={formik.values.phone}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                          placeholder="Phone No"
-                          className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700"
-                        />
-                      </div>
+                      {/* Phone Number Input */}
+                      <input
+                        type="tel"
+                        name="phone"
+                        aria-label="Phone Number"
+                        value={formik.values.phone}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        placeholder="Phone No."
+                        className="w-full bg-transparent pl-2 py-3 text-sm text-gray-700 focus:outline-none"
+                      />
                     </div>
 
                     {/* Error Message */}
                     {formik.touched.phone && formik.errors.phone && (
-                      <div className="px-4 pb-2">
-                        <p className="text-red-500 text-xs">{formik.errors.phone}</p>
-                      </div>
+                      <p className="text-red-500 text-xs pt-1 px-1">{formik.errors.phone}</p>
                     )}
                   </div>
 
 
+
                   {/* Email */}
                   <div className="relative">
-                    <Mail className="absolute left-3 top-4 h-5 w-5 text-yellow-400" />
                     <input
                       type="email"
                       name="email"
@@ -526,7 +475,7 @@ const SignUp = () => {
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                       placeholder="Email ID"
-                      className="w-full pl-10 pr-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
+                      className="w-full pl-4 py-3 rounded-lg bg-white border focus:outline-none focus:ring-0 "
                     />
                     {formik.touched.email && formik.errors.email && (
                       <p className="text-red-500 text-xs ">{formik.errors.email}</p>
@@ -535,7 +484,6 @@ const SignUp = () => {
 
                   {/* Password */}
                   <div className="relative">
-                    <Lock className="absolute left-3 top-4 h-5 w-5 text-yellow-400" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       name="password"
@@ -543,7 +491,7 @@ const SignUp = () => {
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                       placeholder="Password"
-                      className="w-full pl-10 pr-12 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
+                      className="w-full pl-4 py-3 rounded-lg bg-white border focus:outline-none focus:ring-0 "
                     />
                     <button
                       type="button"
@@ -561,7 +509,6 @@ const SignUp = () => {
                 {/* Confirm Password - Full width */}
                 <div className="w-full flex justify-center mt-4">
                   <div className="relative w-[300px]">
-                    <Lock className="absolute left-3 top-4 h-5 w-5 text-yellow-400" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       name="confirmPassword"
@@ -569,7 +516,7 @@ const SignUp = () => {
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                       placeholder="Confirm Password"
-                      className="w-full pl-10 pr-12 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400"
+                      className="w-full pl-4 py-3 rounded-lg bg-white border focus:outline-none focus:ring-0 "
                     />
                     <button
                       type="button"
@@ -669,8 +616,8 @@ const SignUp = () => {
                     onBlur={formik.handleBlur}
                     className="w-4 h-4 text-yellow-400 bg-white border-gray-300 rounded focus:ring-yellow-400 focus:ring-2"
                   />
-                  <label className="text-red-500 text-xs  text-center">
-                    I accept the <a href="#" className="text-yellow-400 hover:underline">Terms & Conditions</a>
+                  <label className=" text-xs  text-center">
+                    I Accept the <a href="#" className="text-blue-800 font-bold hover:underline">Terms & Conditions</a> And  <a href="#" className="text-blue-800 font-bold hover:underline">Terms & Conditions</a>
                   </label>
                 </div>
                 {formik.touched.termsAccepted && formik.errors.termsAccepted && (
@@ -729,9 +676,8 @@ const SignUp = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className={`bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 ${isSubmitting ? 'opacity-50' : ''
+                      className={`w-full primary text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 ${isSubmitting ? 'opacity-50' : ''
                         }`}
-                      style={{ minWidth: '149px' }}
                     >
                       {isSubmitting ? 'Signing Up...' : 'Sign Up'}
                     </button>

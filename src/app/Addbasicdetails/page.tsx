@@ -109,7 +109,7 @@ const AddBasicDetails: React.FC = () => {
   const [otpLoading, setOtpLoading] = useState<boolean>(false);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
   const [userId, setUserId] = useState<number>(0);
-  const [userEmail, setUserEmail] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('') as any;
   const [pincodeLoading, setPincodeLoading] = useState<boolean>(false);
   const [listCountyCode, setListCountryCode] = useState<any[]>([]);
   const [isEmailVerified, setIsEmailVerified] = useState<boolean | null>(null);
@@ -177,7 +177,7 @@ const AddBasicDetails: React.FC = () => {
         formData.append('Email', values.email.trim());
         formData.append('Gender', values.gender);
         formData.append('Phone', values.contactNumber);
-        formData.append('Dob', values.dateOfBirth);
+        formData.append('Dob', formatDateToDDMMYYYY(values.dateOfBirth));
         formData.append('City', values.city);
         formData.append('State', values.state);
 
@@ -358,7 +358,7 @@ const AddBasicDetails: React.FC = () => {
             countryDialingCode === dbCountryCode.toString().trim();
         });
         if (country) {
-          formattedOldCountryCode = `${country.country} ${country.dialingCode}`;
+          formattedOldCountryCode = ` ${country.dialingCode}`;
         } else {
           formattedOldCountryCode = dbCountryCode;
           console.log('No matching country found, using raw code:', dbCountryCode);
@@ -385,7 +385,7 @@ const AddBasicDetails: React.FC = () => {
       if (newCountryCode) {
         try {
           const countryData = JSON.parse(newCountryCode);
-          parsedNewCountryCode = `${countryData.country} ${countryData.dialingCode}`;
+          parsedNewCountryCode = ` ${countryData.dialingCode}`;
         } catch (e) {
           parsedNewCountryCode = newCountryCode;
         }
@@ -417,7 +417,7 @@ const AddBasicDetails: React.FC = () => {
       if (formik.values.countryCode) {
         try {
           const countryData = JSON.parse(formik.values.countryCode);
-          parsedCountryCode = `${countryData.country} ${countryData.dialingCode}`;
+          parsedCountryCode = ` ${countryData.dialingCode}`;
         } catch (e) {
           parsedCountryCode = formik.values.countryCode;
         }
@@ -440,6 +440,24 @@ const AddBasicDetails: React.FC = () => {
       setPhoneVerifyLoading(false);
     }
   };
+
+  const formatDateToDDMMYYYY = (dateString: string): string => {
+  if (!dateString) return '';
+  
+  try {
+    // Split the yyyy-mm-dd format
+    const [year, month, day] = dateString.split('-');
+    
+    // Validate that we have all parts
+    if (!year || !month || !day) return dateString;
+    
+    // Return in dd-mm-yyyy format
+    return `${day}-${month}-${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString; // Return original if conversion fails
+  }
+};
 
   const handleVerifyOTP = async (otp: string) => {
     setVerifyLoading(true);
@@ -527,7 +545,7 @@ const AddBasicDetails: React.FC = () => {
           );
 
           if (country) {
-            setOldCountryCode(`${country.country} ${country.dialingCode}`);
+            setOldCountryCode(` ${country.dialingCode}`);
           } else {
             setOldCountryCode(originalCountryCode);
           }
@@ -541,7 +559,7 @@ const AddBasicDetails: React.FC = () => {
       formik.setValues({
         firstName: data.firstName || '',
         lastName: data.lastName || '',
-        dateOfBirth: data.dob || '',
+        dateOfBirth: formatDateToDDMMYYYY(data.dob || '' ),
         contactNumber: data.phone || '',
         countryCode: formatCountryCode(data.countryCode),
         email: data.email || '',
@@ -855,7 +873,7 @@ const AddBasicDetails: React.FC = () => {
                 <button
                   type="submit"
                   disabled={verifyLoading || !otpFormik.isValid}
-                  className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${verifyLoading || !otpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${verifyLoading || !otpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {verifyLoading ? 'Verifying...' : 'Verify OTP'}
                 </button>
@@ -865,7 +883,7 @@ const AddBasicDetails: React.FC = () => {
                     type="button"
                     onClick={handleEmailVerificationClick}
                     disabled={otpLoading}
-                    className={`flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm ${otpLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex-1 bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm ${otpLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {otpLoading ? 'Sending...' : 'Resend OTP'}
                   </button>
@@ -873,7 +891,7 @@ const AddBasicDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowOTPModal(false)}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
                   >
                     Cancel
                   </button>
@@ -976,7 +994,7 @@ const AddBasicDetails: React.FC = () => {
                     type="button"
                     onClick={handleSendPhoneOTP}
                     disabled={phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode}
-                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode
+                    className={`w-full bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode
                       ? 'opacity-50 cursor-not-allowed'
                       : ''
                       }`}
@@ -987,7 +1005,7 @@ const AddBasicDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowOTPPhoneModal(false)}
-                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300"
+                    className="w-full bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300"
                   >
                     Cancel
                   </button>
@@ -1021,7 +1039,6 @@ const AddBasicDetails: React.FC = () => {
                       className={`w-full pl-12 pr-4 py-3 border ${phoneOtpFormik.touched.otp && phoneOtpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'
                         } rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-lg tracking-widest`}
                       placeholder="000000"
-                      maxLength={6}
                     />
                   </div>
                   {phoneOtpFormik.touched.otp && phoneOtpFormik.errors.otp && (
@@ -1083,14 +1100,14 @@ const AddBasicDetails: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
         <div className="flex justify-between items-center p-5">
           <button
-            onClick={() => router.push('/Dashboard')}
+            onClick={() => router.push('/dashboard')}
             className="text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200"
           >
             Back to Home
           </button>
         </div>
 
-        {!isEmailVerified && (
+        {!isEmailVerified && !userEmail?.isEmailVerified && (
           <div
             className='bg-red-300 mb-3 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2'
             onClick={handleEmailVerificationClick}

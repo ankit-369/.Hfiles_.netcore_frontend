@@ -147,7 +147,22 @@ export const ReportAdd = async (userId: number, payload: FormData) => {
   });
 };
 
+export const ListReport = async (userId?: number, reportType?: string) => {
+  let url = `${endpoints.REPORTADDED.ShowReports}`;
+  const params: string[] = [];
 
-export const ListReport = async (userId:number,reportType:string) =>{
-  return axiosInstance.get(`${endpoints.REPORTADDED.ShowReports}?userId=${userId}&reportType=${reportType}`)
-}
+  if (userId !== undefined) {
+    params.push(`userId=${userId}`);
+  }
+
+  if (reportType) {
+    params.push(`reportType=${encodeURIComponent(reportType)}`);
+  }
+
+  if (params.length > 0) {
+    url += `?${params.join('&')}`;
+  }
+
+  return axiosInstance.get(url);
+};
+

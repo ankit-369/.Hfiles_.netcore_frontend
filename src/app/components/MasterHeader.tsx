@@ -51,7 +51,6 @@ const MasterHeader = () => {
 
   const router = useRouter();
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: any) => {
       if (!event.target.closest('.profile') && !event.target.closest('.profile-menu')) {
@@ -68,6 +67,9 @@ const MasterHeader = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('sub');
     localStorage.removeItem('userId');
+    localStorage.removeItem('isPhoneVerified');
+    localStorage.removeItem('isEmailVerified');
+    localStorage.removeItem('userName');
     router.push('/login');
   };
 
@@ -86,7 +88,10 @@ const MasterHeader = () => {
       <div className="flex items-center gap-2">
         <a
           href="#"
-          onClick={(e) => { e.preventDefault(); navigateTo('/dashboard'); }}
+           onClick={(e) => {
+        e.preventDefault();
+        router.push('/dashboard');
+      }}
           className="block"
         >
           <img
@@ -146,7 +151,10 @@ const MasterHeader = () => {
                 <li className="hover:bg-gray-200 transition-colors">
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); navigateTo('/profile'); }}
+                    onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/addbasicdetails');
+                        }}
                     className="text-[#0331B5] p-2.5 flex items-center gap-2.5 text-sm border-b border-gray-200 cursor-pointer"
                   >
                     <i className="fa fa-circle-info text-lg w-5"></i>

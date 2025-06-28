@@ -47,7 +47,8 @@ axiosInstance.interceptors.response.use(
     const message = error?.response?.data?.message || "Something went wrong";
 
     if (status === 401) {
-      window.location.href = "/";
+      toast.error(message);
+      // window.location.href = "/";
     } else {
       toast.error(message);
     }

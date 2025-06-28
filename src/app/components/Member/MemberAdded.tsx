@@ -1,4 +1,5 @@
-import React from 'react'
+import { decryptData } from '@/app/utils/webCrypto';
+import React, { useEffect } from 'react'
 
 type CountryCode = {
     country: string;
@@ -14,6 +15,23 @@ type MemberAddedProps = {
 };
 
 const MemberAdded: React.FC<MemberAddedProps> = ({ formik, handleCountryCodeChange, listCountyCode, handlePhoneNumberChange, isSubmitting }) => {
+
+    useEffect(() => {
+        const setDecryptedEmail = async () => {
+            try {
+                const encryptedSub = localStorage.getItem('sub');
+                if (encryptedSub) {
+                    const decryptedEmail = await decryptData(encryptedSub);
+                    formik.setFieldValue('email', decryptedEmail);
+                }
+            } catch (error) {
+                console.error("Failed to decrypt sub:", error);
+            }
+        };
+
+        setDecryptedEmail();
+    }, []);
+
     return (
         <div>
             <div className="max-w-4xl mx-auto">
