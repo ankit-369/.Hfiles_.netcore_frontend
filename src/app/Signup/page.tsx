@@ -9,6 +9,7 @@ import DynamicPage from '../components/Header&Footer/DynamicPage';
 import { toast, ToastContainer } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import { decryptData, encryptData } from '../utils/webCrypto';
+import Captcha from '../components/Captcha';
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,14 +18,12 @@ const SignUp = () => {
   const [otp, setOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [timer, setTimer] = useState(0);
-  const [captchaCode, setCaptchaCode] = useState('IAPST');
-  const [captchaBackground, setCaptchaBackground] = useState('');
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOtpSubmitting, setIsOtpSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const router = useRouter();
   const [listCountyCode, setListCountryCode] = useState<any[]>([]);
-
 
   const ListCoutny = async () => {
     try {
@@ -38,6 +37,7 @@ const SignUp = () => {
   useEffect(() => {
     ListCoutny();
   }, []);
+
   // Yup validation schema
   const validationSchema = Yup.object({
     firstName: Yup.string()
@@ -84,43 +84,10 @@ const SignUp = () => {
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password'), ''], 'Passwords must match')
       .required('Please confirm your password'),
-    captcha: Yup.string()
-      .test('captcha-match', 'Invalid captcha code', function (value) {
-        return value === captchaCode;
-      })
-      .required('Captcha is required'),
     termsAccepted: Yup.boolean()
       .oneOf([true], 'Please accept terms and conditions')
       .required('Please accept terms and conditions'),
   });
-
-  const generateDynamicCaptcha = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    const specialChars = ['@', '#', '$', '%', '&', '*'];
-    let result = '';
-
-    for (let i = 0; i < 5; i++) {
-      if (i === 2 && Math.random() > 0.5) {
-        result += specialChars[Math.floor(Math.random() * specialChars.length)];
-      } else {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-    }
-
-    const patterns = [
-      'linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0)',
-      'linear-gradient(135deg, #e0e0e0 25%, transparent 25%, transparent 75%, #e0e0e0 75%, #e0e0e0)',
-      'radial-gradient(circle at 20% 50%, #f5f5f5 20%, transparent 21%)',
-      'linear-gradient(90deg, #f8f8f8 50%, #f0f0f0 50%)'
-    ];
-
-    const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
-    const backgroundSize = Math.random() > 0.5 ? '10px 10px' : '15px 15px';
-
-    setCaptchaCode(result);
-    setCaptchaBackground(`${selectedPattern}; background-size: ${backgroundSize}`);
-    return result;
-  };
 
   useEffect(() => {
     const getDecryptedTokenData = async () => {
@@ -179,11 +146,16 @@ const SignUp = () => {
       email: '',
       password: '',
       confirmPassword: '',
-      captcha: '',
       termsAccepted: false,
     },
     validationSchema,
     onSubmit: async (values) => {
+      // Check if captcha is verified before submitting
+      if (!isCaptchaVerified) {
+        toast.error('Please complete the captcha verification');
+        return;
+      }
+
       setIsSubmitting(true);
       try {
         const countryData = JSON.parse(values.countryCode);
@@ -209,7 +181,6 @@ const SignUp = () => {
     },
   });
 
-
   useEffect(() => {
     let interval: string | number | NodeJS.Timeout | undefined;
     if (timer > 0) {
@@ -219,16 +190,6 @@ const SignUp = () => {
     }
     return () => clearInterval(interval);
   }, [timer]);
-
-  useEffect(() => {
-    generateDynamicCaptcha();
-  }, []);
-
-  useEffect(() => {
-    if (formik.values.captcha && formik.values.captcha !== captchaCode) {
-      formik.setFieldError('captcha', 'Invalid captcha code');
-    }
-  }, [captchaCode]);
 
   const handleOtpSubmit = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
@@ -259,14 +220,13 @@ const SignUp = () => {
         confirmPassword: formik.values.confirmPassword,
         countryCode: combinedCountryCode,
         otp: otp,
-        captcha: formik.values.captcha === captchaCode,
+        captcha: isCaptchaVerified, // Use captcha verification status
         termsAndConditions: formik.values.termsAccepted,
       };
       const response = await AddSignUp(signupPayload);
       localStorage.setItem("isEmailVerified", await (response.data.data.isEmailVerified));
       localStorage.setItem("isPhoneVerified", await (response.data.data.isPhoneVerified));
       localStorage.setItem("userName", await (response.data.data.username));
-
 
       toast.success(`${response.data.message}`);
 
@@ -316,11 +276,6 @@ const SignUp = () => {
     }
   };
 
-  const refreshCaptcha = () => {
-    generateDynamicCaptcha();
-    formik.setFieldValue('captcha', '');
-  };
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -329,48 +284,41 @@ const SignUp = () => {
 
   return (
     <DynamicPage>
-      <div className="flex flex-col md:flex-row w-full h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-139px)] 2xl:h-[calc(100vh-140px)]">
-        <div className="hidden md:flex flex-1 bg-gradient-to-b from-white via-white to-cyan-200 items-center justify-center p-6">
-          <div className="max-w-md text-center">
-            <div className="relative">
-              <img
-                src="/ac3693f001558bc88aa841575eb986cffb650260.png"
-                alt="Sign up illustration"
-                width={1000}
-                height={600}
-                className="w-full h-auto object-contain drop-shadow-2xl"
-              />
-            </div>
+      <div className="flex flex-col lg:flex-row w-full h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)]  lg:h-[calc(100vh-129px)] 2xl:h-[calc(100vh-140px)]">
+
+        {/* Left Side - Illustration - Hidden on sm and md screens, visible on lg and above */}
+        <div className="hidden lg:flex flex-1 relative bg-gradient-to-b from-white via-white to-cyan-200 items-center justify-center p-6 overflow-hidden">
+          {/* Curved Shape */}
+          <div className="absolute right-0 top-0 h-full w-1/2 bg-white rounded-l-[100%]"></div>
+
+          {/* Image Container with responsive sizing and left shift */}
+          <div className="relative z-10 text-center w-full max-w-[400px] lg:left-[-70px]">
+            <img
+              src="/ac3693f001558bc88aa841575eb986cffb650260.png"
+              alt="Sign up illustration"
+              className="w-full h-auto object-contain drop-shadow-2xl"
+            />
           </div>
         </div>
 
-        <div
-          className="flex-1 flex items-start md:items-center justify-center p-6 relative"
 
-        >
-          <div className="w-full max-w-2xl">
-            <form onSubmit={formik.handleSubmit} className="space-y-4 md:space-y-6">
+        <div className="flex-1 flex items-start lg:items-center justify-center p-6 relative">
+          <div className="w-full max-w-7xl mx-4">
+            <form onSubmit={formik.handleSubmit} className="space-y-4 lg:space-y-6">
               {/* Mobile Back Button */}
-              <div className="md:hidden flex items-center mb-6">
-                <ArrowLeft className="h-6 w-6 text-white mr-4" />
-                <span className="text-white text-lg">Back</span>
+
+              <div className="text-center mb-6 lg:mb-8">
+                <h1 className="text-black text-xl lg:text-2xl sm:text-lg font-semibold">
+                  <span className="text-blue-700 font-bold">Sign Up</span> to Simplify Your Health Records  Today
+                </h1>
+                <div className="mt-2 mx-auto w-24 border-b-2 border-blue-700"></div>
               </div>
 
-              {/* Title */}
-              <div className="text-center mb-6 md:mb-8">
-                <img
-                  src="/Sign Up Page/Hfiles Logo.png"
-                  alt="Hfiles Logo"
-                  className="w-28 mx-auto mb-1"
-                />
-                <h1 className="text-white text-2xl md:text-3xl font-bold">Sign Up</h1>
-              </div>
 
               {/* Form Fields */}
               <div className="space-y-3 ">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
                   <div>
-
                     {/* First Name */}
                     <input
                       type="text"
@@ -420,13 +368,12 @@ const SignUp = () => {
                     )}
                   </div>
 
-
                   {/* Phone Number - Merged Input */}
                   <div className="relative">
                     <div
                       className={`flex items-center bg-white rounded-lg border px-4 
-      ${formik.touched.phone && formik.errors.phone ? 'border-red-400' : 'border-black'}
-      `}
+        ${formik.touched.phone && formik.errors.phone ? 'border-red-400' : 'border-black'}
+        `}
                     >
                       {/* Country Code Selector */}
                       <select
@@ -435,15 +382,16 @@ const SignUp = () => {
                         value={formik.values.countryCode}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
-                        className="appearance-none bg-transparent text-blue-700 font-semibold text-sm w-10 focus:outline-none"
+                        className="appearance-none bg-transparent text-blue-700 font-semibold text-sm w-15 focus:outline-none"
                       >
                         {Array.isArray(listCountyCode) &&
                           listCountyCode.map((country, index) => (
                             <option key={index} value={JSON.stringify({ country: country.country, dialingCode: country.dialingCode })}>
-                              {country.dialingCode}
+                              {country.country} ({country.dialingCode})
                             </option>
                           ))}
                       </select>
+
 
                       {/* Phone Number Input */}
                       <input
@@ -463,8 +411,6 @@ const SignUp = () => {
                       <p className="text-red-500 text-xs pt-1 px-1">{formik.errors.phone}</p>
                     )}
                   </div>
-
-
 
                   {/* Email */}
                   <div className="relative">
@@ -531,79 +477,9 @@ const SignUp = () => {
                   </div>
                 </div>
 
-                {/* Dynamic Captcha */}
-                <div className="text-center space-y-2">
-                  <div className="relative inline-block">
-                    <div
-                      className="bg-white p-4 rounded-lg border-2 border-gray-300 cursor-pointer hover:bg-gray-50 shadow-sm transition-all duration-300 relative overflow-hidden"
-                      onClick={refreshCaptcha}
-                      style={{
-                        minWidth: '180px',
-                        height: '65px',
-                        background: captchaBackground || 'white'
-                      }}
-                    >
-                      <span
-                        className="font-mono text-xl font-bold tracking-wider select-none relative z-10"
-                        style={{
-                          color: '#333',
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
-                          transform: `rotate(${Math.random() * 6 - 3}deg)`,
-                          display: 'inline-block'
-                        }}
-                      >
-                        {captchaCode.split('').map((char, index) => (
-                          <span
-                            key={index}
-                            style={{
-                              transform: `rotate(${Math.random() * 8 - 4}deg) scale(${0.9 + Math.random() * 0.2})`,
-                              display: 'inline-block',
-                              margin: '0 1px',
-                              color: `hsl(${Math.random() * 360}, 70%, 40%)`
-                            }}
-                          >
-                            {char}
-                          </span>
-                        ))}
-                      </span>
-                      {/* Noise lines */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        {[...Array(3)].map((_, i) => (
-                          <div
-                            key={i}
-                            className="absolute bg-gray-400 opacity-30"
-                            style={{
-                              width: '100%',
-                              height: '1px',
-                              top: `${20 + i * 15}%`,
-                              transform: `rotate(${Math.random() * 6 - 3}deg)`
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={refreshCaptcha}
-                      className="absolute -top-2 -right-2 bg-yellow-400 hover:bg-yellow-500 text-black p-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110"
-                      title="Refresh Captcha"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <p className="text-white text-xs"></p>
-                  <input
-                    type="text"
-                    name="captcha"
-                    value={formik.values.captcha}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    placeholder="Enter captcha code"
-                    className="w-full max-w-xs mx-auto px-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400 text-center"
-                  />
-                  {formik.touched.captcha && formik.errors.captcha && (
-                    <p className="text-red-500 text-xs ">{formik.errors.captcha}</p>
-                  )}
+                {/* New Captcha Component */}
+                <div className="w-full flex justify-center mt-4">
+                  <Captcha onVerify={() => setIsCaptchaVerified(true)} />
                 </div>
 
                 {/* Terms and Conditions */}
@@ -626,7 +502,7 @@ const SignUp = () => {
 
                 {/* OTP Section */}
                 {showOtpSection && (
-                  <div className="space-y-4 mt-6">
+                  <div className="space-y-4 mt-4">
                     <div className="w-full flex justify-center">
                       <div className="relative w-[300px]">
                         <input
@@ -637,25 +513,33 @@ const SignUp = () => {
                             setOtpError('');
                           }}
                           placeholder="Enter OTP"
-                          className="w-full px-4 py-3 rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-yellow-400 text-center text-lg font-mono tracking-widest"
+                          className="w-full px-4 py-3 rounded-lg bg-white border border-black focus:ring-2 text-center text-lg font-mono tracking-widest"
                         />
                       </div>
                     </div>
-                    <div className="text-right text-blue-300 text-sm font-mono pr-8">
-                      {formatTime(timer)}
-                    </div>
-                    {otpError && <p className="text-red-300 text-sm text-center">{otpError}</p>}
-                    {timer === 0 && (
-                      <div className="text-center">
+                    <div className="flex justify-between items-center px-4">
+                      {/* Timer on the left or right */}
+                      <div className="text-blue-800 text-sm font-mono">
+                        {formatTime(timer)}
+                      </div>
+
+                      {/* Conditional resend button */}
+                      {timer === 0 && (
                         <button
                           type="button"
                           onClick={resendOtp}
-                          className="text-yellow-400 hover:text-yellow-300 underline text-sm"
+                          className="text-blue-800 underline text-sm"
                         >
                           Resend OTP
                         </button>
-                      </div>
+                      )}
+                    </div>
+
+                    {/* Error message below both */}
+                    {otpError && (
+                      <p className="text-red-300 text-sm text-center mt-1">{otpError}</p>
                     )}
+
                   </div>
                 )}
 
@@ -675,8 +559,8 @@ const SignUp = () => {
                   ) : (
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className={`w-full primary text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 ${isSubmitting ? 'opacity-50' : ''
+                      disabled={isSubmitting || !isCaptchaVerified}
+                      className={`w-full primary text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 ${isSubmitting || !isCaptchaVerified ? 'opacity-50' : ''
                         }`}
                     >
                       {isSubmitting ? 'Signing Up...' : 'Sign Up'}
@@ -686,10 +570,10 @@ const SignUp = () => {
 
                 {/* Login Link */}
                 <div className="text-center">
-                  <span className="text-white text-sm">
-                    Already registered? Click{' '}
-                    <a href="/login" className="text-yellow-400 hover:underline font-bold">
-                      here
+                  <span className="text-black text-sm">
+                    Already registered? {' '}
+                    <a href="/login" className="text-blue-800 hover:underline font-bold">
+                      Click here
                     </a>{' '}
                     to Login
                   </span>
@@ -700,7 +584,7 @@ const SignUp = () => {
         </div>
         <ToastContainer />
       </div>
-    </DynamicPage>
+    </DynamicPage >
   );
 };
 

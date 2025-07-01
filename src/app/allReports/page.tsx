@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Share2, Trash2, ChevronDown, Search } from 'lucide-react';
 import MasterHome from '../components/MasterHome';
-import { ListReport, MemberList } from '../services/HfilesServiceApi';
+import { ListReport, MemberList, DeleteReport, ReportShare } from '../services/HfilesServiceApi';
 import { toast, ToastContainer } from 'react-toastify';
 import { decryptData } from '../utils/webCrypto';
 
@@ -47,10 +47,17 @@ const AllReportsPage = () => {
     const [selectedUser, setSelectedUser] = useState<string>('all');
     const [userName, setUserName] = useState<string>('User');
     const [memberList, setMemberList] = useState<Member[]>([]);
-
-    // New state for checkbox functionality
     const [selectedReports, setSelectedReports] = useState<Set<number>>(new Set());
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+    const [isDeleting, setIsDeleting] = useState<number | null>(null);
+    const [isSharing, setIsSharing] = useState(false);
+    const [shareData, setShareData] = useState<{
+        shareUrl: string;
+        expiryDate: string;
+        expiryTime: string;
+    } | null>(null);
 
     const reportTypes = [
         "Lab Report",
@@ -63,8 +70,6 @@ const AllReportsPage = () => {
         "Invoices/Mediclaim Insurance"
     ];
 
-
-
     const getUserName = (): string => {
         const userName = localStorage.getItem("userName");
         return userName || "User";
@@ -74,7 +79,6 @@ const AllReportsPage = () => {
         const defaultUserName = getUserName();
         setUserName(defaultUserName);
     }, []);
-
 
     useEffect(() => {
         if (selectedUser === 'all') {
@@ -87,7 +91,6 @@ const AllReportsPage = () => {
             }
         }
     }, [selectedUser, memberList]);
-
 
     const getUserId = async (): Promise<number> => {
         try {
@@ -165,33 +168,102 @@ const AllReportsPage = () => {
         }
     };
 
-    const handleDeleteReport = (reportId: number) => {
-        console.log('Delete report:', reportId);
-        toast.info('Delete functionality to be implemented');
+    const handleDeleteReport = (report: Report) => {
+        setReportToDelete(report);
+        setIsDeleteModalOpen(true);
     };
 
-    const handleShare = () => {
-        setIsShareModalOpen(true);
+    const confirmDelete = async () => {
+        if (!reportToDelete) return;
+
+        setIsDeleting(reportToDelete.id);
+        setIsDeleteModalOpen(false);
+
+        try {
+            const response = await DeleteReport(reportToDelete.id);
+            if (response && response.data.message) {
+                setReports(prev => prev.filter(r => r.id !== reportToDelete.id));
+                toast.success(`${response.data.message}`);
+            } else {
+                toast.error(response?.data?.message || "Failed to delete report");
+            }
+        } catch (error) {
+            console.error("Error deleting report:", error);
+            toast.error("Failed to delete report. Please try again.");
+        } finally {
+            setIsDeleting(null);
+            setReportToDelete(null);
+        }
+    };
+
+    const handleShare = async () => {
+        if (selectedReports.size === 0) {
+            toast.error("Please select at least one report to share.");
+            return;
+        }
+
+        setIsSharing(true);
+
+        try {
+            const payload = {
+                reportIds: Array.from(selectedReports)
+            };
+
+            const response = await ReportShare(payload);
+
+            if (response && response.data && response.data.success) {
+                setShareData({
+                    shareUrl: response.data.data.shareUrl,
+                    expiryDate: response.data.data.expiryDate,
+                    expiryTime: response.data.data.expiryTime
+                });
+                setIsShareModalOpen(true);
+                toast.success(response.data.message);
+            } else {
+                toast.error("Failed to create share link. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error creating share link:", error);
+            toast.error("Failed to create share link. Please try again.");
+        } finally {
+            setIsSharing(false);
+        }
     };
 
     const handleCloseShareModal = () => {
         setIsShareModalOpen(false);
+        setShareData(null);
+        setSelectedReports(new Set());
     };
 
     const handleWhatsAppShare = () => {
-        const text = `${userName}'s Medical Reports`;
-        const url = `https://wa.me/?text=${encodeURIComponent(text + ' ' + window.location.href)}`;
+        if (!shareData) return;
+
+        const cleanShareId = shareData.shareUrl;
+        const shareUrl = `${window.location.origin}/shareReportPage?shareId=${cleanShareId}`;
+        const message = `${shareUrl}\n\n${userName}'s Medical Reports`;
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
         setIsShareModalOpen(false);
     };
 
+
+
     const handleGmailShare = () => {
-        const subject = `${userName}'s Medical Reports`;
-        const body = `Please find the medical reports here: ${window.location.href}`;
-        const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        window.open(url);
+        if (!shareData) return;
+
+        const shareUrl = `${window.location.origin}/shareReportPage?shareId=${shareData.shareUrl}`;
+        const subject = `${userName}'s Medical Reports (${selectedReports.size} reports)`;
+        const body = `Please find the medical reports here:\n${shareUrl}\n\nThis link will expire on ${shareData.expiryDate} at ${shareData.expiryTime}`;
+
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}&tf=1`;
+
+        window.open(gmailUrl, '_blank');
         setIsShareModalOpen(false);
     };
+
+
+
 
     // Checkbox handler functions
     const handleSelectReport = (reportId: number) => {
@@ -203,6 +275,7 @@ const AllReportsPage = () => {
         }
         setSelectedReports(newSelected);
     };
+
 
 
     const filteredReports = reports.filter((report) => {
@@ -267,10 +340,20 @@ const AllReportsPage = () => {
                         <div className="flex items-center space-x-4">
                             <button
                                 onClick={handleShare}
-                                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                disabled={isSharing}
+                                className={`flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg transition-colors ${selectedReports.size > 0
+                                    ? 'hover:bg-gray-50 text-gray-900'
+                                    : 'text-gray-400 cursor-not-allowed'
+                                    } ${isSharing ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
-                                <Share2 size={16} />
-                                <span>Share</span>
+                                {isSharing ? (
+                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                ) : (
+                                    <Share2 size={16} />
+                                )}
+                                <span>
+                                    Share {selectedReports.size > 0 ? `(${selectedReports.size})` : ''}
+                                </span>
                             </button>
                         </div>
 
@@ -342,8 +425,8 @@ const AllReportsPage = () => {
                                 <div
                                     key={report.id}
                                     className={`bg-white rounded-lg shadow-sm border transition-all ${selectedReports.has(report.id)
-                                            ? 'border-blue-500 ring-2 ring-blue-200'
-                                            : 'border-gray-300 hover:shadow-md'
+                                        ? 'border-blue-500 ring-2 ring-blue-200'
+                                        : 'border-gray-300 hover:shadow-md'
                                         }`}
                                 >
                                     {/* Checkbox positioned at top left */}
@@ -402,10 +485,19 @@ const AllReportsPage = () => {
                                                 View File
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteReport(report.id)}
-                                                className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                                                onClick={() => handleDeleteReport(report)}
+                                                disabled={isDeleting === report.id}
+                                                className={`p-2 rounded-full transition-colors ${isDeleting === report.id
+                                                    ? 'cursor-not-allowed bg-gray-100'
+                                                    : 'hover:bg-red-100'
+                                                    }`}
+                                                title="Delete Report"
                                             >
-                                                <Trash2 size={16} className="text-gray-600" />
+                                                {isDeleting === report.id ? (
+                                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <Trash2 size={16} className="text-red-600" />
+                                                )}
                                             </button>
                                         </div>
                                     </div>
@@ -422,7 +514,9 @@ const AllReportsPage = () => {
                     <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
                         {/* Modal Header */}
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-semibold text-gray-800">Share as File</h2>
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Share {selectedReports.size} Report(s)
+                            </h2>
                             <button
                                 onClick={handleCloseShareModal}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -438,7 +532,9 @@ const AllReportsPage = () => {
                             {/* WhatsApp Option */}
                             <button
                                 onClick={handleWhatsAppShare}
-                                className="flex-1 flex items-center justify-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200"
+                                disabled={isSharing}
+                                className={`flex-1 flex items-center justify-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200 ${isSharing ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
                             >
                                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -451,7 +547,9 @@ const AllReportsPage = () => {
                             {/* Gmail Option */}
                             <button
                                 onClick={handleGmailShare}
-                                className="flex-1 flex items-center justify-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all duration-200"
+                                disabled={isSharing}
+                                className={`flex-1 flex items-center justify-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all duration-200 ${isSharing ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
                             >
                                 <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
                                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -459,6 +557,41 @@ const AllReportsPage = () => {
                                     </svg>
                                 </div>
                                 <span className="font-medium text-gray-700">Gmail</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                                <Trash2 className="h-6 w-6 text-red-600" />
+                            </div>
+                            <h2 className="text-xl font-semibold mb-2 text-gray-900">Delete Report</h2>
+                            <p className="text-gray-600 mb-6">
+                                Are you sure you want to delete "{reportToDelete?.reportName}"? This action cannot be undone.
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setIsDeleteModalOpen(false);
+                                    setReportToDelete(null);
+                                }}
+                                className="px-4 py-2 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            >
+                                Yes, Delete
                             </button>
                         </div>
                     </div>

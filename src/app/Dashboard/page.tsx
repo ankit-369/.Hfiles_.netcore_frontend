@@ -20,6 +20,10 @@ function Dashboard() {
     router.push('/myHfiles');
   };
 
+    const handleMedicalClick = () => {
+    router.push('/medicalHistory');
+  };
+
   return (
     <MasterHome>
       <>
@@ -712,7 +716,7 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="my_profile ">
+                  <div className="my_profile " onClick={handleMedicalClick}>
                     <div className="profile_row">
                       <div className="image_wrapper">
                         <img src="/Reception Page/health-report-icon.png" alt="Medical History" />

@@ -3,8 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Eye, FileText, Edit, Trash2, Share2 } from 'lucide-react';
 import MasterHome from '../components/MasterHome';
-import { ListReport } from '../services/HfilesServiceApi';
+import { ListReport, DeleteReport, MemberList, ReportEdit } from '../services/HfilesServiceApi';
 import { toast, ToastContainer } from 'react-toastify';
+import { decryptData } from '../utils/webCrypto';
 
 type Report = {
     userName(userName: any): unknown;
@@ -31,7 +32,6 @@ type ApiResponse = {
     message: string;
 };
 
-
 const ReportsPage = () => {
     const [reports, setReports] = useState<Report[]>([]);
     const [userId, setUserId] = useState<number>(0);
@@ -43,7 +43,12 @@ const ReportsPage = () => {
     const [currentReport, setCurrentReport] = useState<Report | null>(null);
     const [editedReportName, setEditedReportName] = useState('');
     const [userNames, setUserNames] = useState() as any;
-
+    const [isDeleting, setIsDeleting] = useState<number | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+    const [independent, setIndependent] = useState() as any;
+    const [selectedIndependentIds, setSelectedIndependentIds] = useState<number[]>([]);
+    const [reportAccessMap, setReportAccessMap] = useState<Record<number, number[]>>({});
 
     useEffect(() => {
         const userIdParam = searchParams.get('userId');
@@ -82,8 +87,6 @@ const ReportsPage = () => {
         }
     };
 
-
-
     const handleView = (report: Report) => {
         if (report.reportUrl) {
             window.open(report.reportUrl, '_blank');
@@ -95,32 +98,38 @@ const ReportsPage = () => {
     const handleEdit = (report: Report) => {
         setCurrentReport(report);
         setEditedReportName(report.reportName);
+        const savedAccessIds = reportAccessMap[report.id] || [];
+        setSelectedIndependentIds(savedAccessIds);
+
         setIsEditModalOpen(true);
     };
 
-
-    const handleDelete = async (report: Report) => {
-        if (window.confirm(`Are you sure you want to delete "${report.reportName}"?`)) {
-            try {
-                setReports(prev => prev.filter(r => r.id !== report.id));
-                setTotalReportsCount(prev => prev - 1);
-                toast.success("Report deleted successfully");
-            } catch (error) {
-                console.error("Error deleting report:", error);
-                toast.error("Failed to delete report. Please try again.");
-            }
-        }
+    const handleDelete = (report: Report) => {
+        setReportToDelete(report);
+        setIsDeleteModalOpen(true);
     };
 
-    const handleShare = (report: Report) => {
-        if (report.reportUrl) {
-            navigator.clipboard.writeText(report.reportUrl).then(() => {
-                toast.success("Report URL copied to clipboard");
-            }).catch(() => {
-                toast.error("Failed to copy URL");
-            });
-        } else {
-            toast.error("File URL not available");
+    const confirmDelete = async () => {
+        if (!reportToDelete) return;
+
+        setIsDeleting(reportToDelete.id);
+        setIsDeleteModalOpen(false);
+
+        try {
+            const response = await DeleteReport(reportToDelete.id);
+            if (response && response.data.message) {
+                setReports(prev => prev.filter(r => r.id !== reportToDelete.id));
+                setTotalReportsCount(prev => prev - 1);
+                toast.success(`${response.data.message}`);
+            } else {
+                toast.error(response?.data?.message);
+            }
+        } catch (error) {
+            console.error("Error deleting report:", error);
+            toast.error("Failed to delete report. Please try again.");
+        } finally {
+            setIsDeleting(null);
+            setReportToDelete(null);
         }
     };
 
@@ -205,19 +214,83 @@ const ReportsPage = () => {
         }
     };
 
-
-    const handleSaveEdit = () => {
+    const handleSaveEdit = async () => {
         if (!currentReport) return;
 
-        const updatedReports = reports.map((r) =>
-            r.id === currentReport.id ? { ...r, reportName: editedReportName } : r
-        );
+        const payload = {
+            reportName: editedReportName,
+            accessUpdates: selectedIndependentIds.map(memberId => ({
+                independentUserId: memberId,
+                accessStatus: true
+            }))
+        };
 
-        setReports(updatedReports);
-        toast.success("Report name updated locally");
-        setIsEditModalOpen(false);
+        try {
+            const response = await ReportEdit(currentReport.id, payload);
+            if (response && response.data && response.data.success) {
+                const updatedReports = reports.map((r) =>
+                    r.id === currentReport.id ? { ...r, reportName: editedReportName } : r
+                );
+                setReports(updatedReports);
+                setReportAccessMap(prev => ({
+                    ...prev,
+                    [currentReport.id]: [...selectedIndependentIds]
+                }));
+
+                toast.success(response.data.message);
+            } else {
+                toast.error(response?.data?.message);
+            }
+
+            setIsEditModalOpen(false);
+            setSelectedIndependentIds([]);
+            setCurrentReport(null);
+            setEditedReportName('');
+
+        } catch (error) {
+            console.error("Error updating report:", error);
+            toast.error("Failed to update report. Please try again.");
+        }
+    };
+    const getUserId = async (): Promise<number> => {
+        try {
+            const encryptedUserId = localStorage.getItem("userId");
+            if (!encryptedUserId) {
+                return 0;
+            }
+            const userIdStr = await decryptData(encryptedUserId);
+            return parseInt(userIdStr, 10);
+        } catch (error) {
+            console.error("Error getting userId:", error);
+            return 0;
+        }
     };
 
+    const ListMember = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+            const response = await MemberList(currentUserId);
+            setIndependent(response?.data?.data?.independentMembers)
+        } catch (error) {
+            console.error("Error fetching members:", error);
+        }
+    };
+
+    useEffect(() => {
+        ListMember();
+    }, [])
+
+    const handleCheckboxChange = (memberId: number) => {
+        setSelectedIndependentIds((prev) =>
+            prev.includes(memberId)
+                ? prev.filter((id) => id !== memberId)
+                : [...prev, memberId]
+        );
+    };
 
     return (
         <MasterHome>
@@ -233,9 +306,9 @@ const ReportsPage = () => {
                             Back to Report
                         </button>
                     </div>
-                   <h1 className="text-2xl flex justify-center font-bold">
-                    <span className="text-blue-800">{userNames}'s&nbsp;</span>
-                    <span className="text-black">Reports</span>
+                    <h1 className="text-2xl flex justify-center font-bold">
+                        <span className="text-blue-800">{userNames}'s&nbsp;</span>
+                        <span className="text-black">Reports</span>
                     </h1>
 
                     <div className='border mt-2 mx-auto w-30'></div>
@@ -289,17 +362,18 @@ const ReportsPage = () => {
                                         </button>
                                         <button
                                             onClick={() => handleDelete(report)}
-                                            className="flex items-center justify-center px-2 py-2 text-red-500 cursor-pointer  text-sm rounded-lg transition-colors"
+                                            disabled={isDeleting === report.id}
+                                            className={`flex items-center justify-center px-2 py-2 text-sm rounded-lg transition-colors ${isDeleting === report.id
+                                                ? 'text-gray-400 cursor-not-allowed'
+                                                : 'text-red-500 cursor-pointer hover:bg-red-50'
+                                                }`}
                                             title="Delete Report"
                                         >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleShare(report)}
-                                            className="flex items-center justify-center px-2 py-2 text-green-500 cursor-pointer text-sm rounded-lg  transition-colors"
-                                            title="Copy Link"
-                                        >
-                                            <Share2 className="w-4 h-4" />
+                                            {isDeleting === report.id ? (
+                                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                                            ) : (
+                                                <Trash2 className="w-4 h-4" />
+                                            )}
                                         </button>
                                         <button
                                             onClick={() => handleWhatsAppShare(report)}
@@ -341,6 +415,7 @@ const ReportsPage = () => {
                 )}
             </div>
 
+            {/* Edit Modal */}
             {isEditModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
                     <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
@@ -354,7 +429,33 @@ const ReportsPage = () => {
                             placeholder="Enter new report name"
                         />
 
-                        <div className="flex justify-end gap-2">
+                        <div>
+                            {independent?.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Select Independent Members (optional)
+                                    </label>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto border p-2 rounded">
+                                        {independent.map((member: any) => (
+                                            <label key={member.id} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIndependentIds.includes(member.id)}
+                                                    onChange={() => handleCheckboxChange(member.id)}
+                                                    className="text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm text-gray-700">
+                                                    {member.firstName} {member.lastName}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+                        <div className="flex justify-end gap-2 mt-3">
                             <button
                                 onClick={() => setIsEditModalOpen(false)}
                                 className="px-4 py-2 text-sm rounded-md bg-gray-200 hover:bg-gray-300"
@@ -366,6 +467,41 @@ const ReportsPage = () => {
                                 className="px-4 py-2 text-sm rounded-md primary text-white hover:bg-blue-700"
                             >
                                 Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                                <Trash2 className="h-6 w-6 text-red-600" />
+                            </div>
+                            <h2 className="text-xl font-semibold mb-2 text-gray-900">Delete Report</h2>
+                            <p className="text-gray-600 mb-6">
+                                Are you sure you want to delete "{reportToDelete?.reportName}"? This action cannot be undone.
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setIsDeleteModalOpen(false);
+                                    setReportToDelete(null);
+                                }}
+                                className="px-4 py-2 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            >
+                                Yes, Delete
                             </button>
                         </div>
                     </div>

@@ -7,7 +7,7 @@ type CountryCode = {
 };
 
 type MemberAddedProps = {
-    formik: any; // You can replace this with proper `FormikProps<YourFormType>` for better typing
+    formik: any; 
     handleCountryCodeChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     listCountyCode: CountryCode[];
     handlePhoneNumberChange: (e: React.ChangeEvent<HTMLInputElement>) => void;

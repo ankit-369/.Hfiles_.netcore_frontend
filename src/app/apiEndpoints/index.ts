@@ -60,7 +60,10 @@ export const endpoints = {
 
    REPORTADDED : {
       AddReports : (userId:number) => `${API_NEW_Data}user/${userId}/reports/upload`,
-      ShowReports : API_NEW_Data + "user/reports"
+      ShowReports : API_NEW_Data + "user/reports",
+      DeleteReport : (reportId:number) => `${API_NEW_Data}report/${reportId}/delete`,
+      ShareReport : API_NEW_Data + "reports/share",
+      EditReport : (reportId:number) => `${API_NEW_Data}report/${reportId}/edit`
    }
 
 }

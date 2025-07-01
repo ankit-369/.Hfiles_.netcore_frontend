@@ -25,6 +25,9 @@ const MedicalDashboard = () => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const router = useRouter();
+    const [independent, setIndependent] = useState() as any;
+    const [selectedIndependentIds, setSelectedIndependentIds] = useState<number[]>([]);
+
 
     const reportTypes = [
         { Id: 3, Name: "LAB REPORT" },
@@ -59,6 +62,7 @@ const MedicalDashboard = () => {
                 return;
             }
             const response = await MemberList(currentUserId);
+            setIndependent(response?.data?.data?.independentMembers)
             if (response && response.data && response.data.data) {
                 const formattedUsers = [
                     ...response.data.data.independentMembers,
@@ -77,6 +81,15 @@ const MedicalDashboard = () => {
             toast.error("Failed to load members. Please try again.");
         }
     };
+
+    const handleCheckboxChange = (memberId: number) => {
+        setSelectedIndependentIds((prev) =>
+            prev.includes(memberId)
+                ? prev.filter((id) => id !== memberId)
+                : [...prev, memberId]
+        );
+    };
+
 
     const handleUserSelection = async (userName: string, userId: number) => {
         setSelectedUser(userName);
@@ -181,6 +194,9 @@ const MedicalDashboard = () => {
             formData.append("ReportName", fileName.trim());
             formData.append("ReportType", selectedReportType.Name.toString());
             formData.append("ReportFile", selectedFile);
+            selectedIndependentIds.forEach((id) => {
+                formData.append("IndependentUserIds", id.toString());
+            });
             const response = await ReportAdd(userId, formData);
             if (response && response.data) {
                 const message = response.data.message;
@@ -510,6 +526,32 @@ const MedicalDashboard = () => {
                                             </div>
                                         </label>
                                     </div>
+                                </div>
+
+                                <div>
+                                    {independent?.length > 0 && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Select Independent Members (optional)
+                                            </label>
+                                            <div className="space-y-2 max-h-40 overflow-y-auto border p-2 rounded">
+                                                {independent.map((member: any) => (
+                                                    <label key={member.id} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIndependentIds.includes(member.id)}
+                                                            onChange={() => handleCheckboxChange(member.id)}
+                                                            className="text-blue-600 focus:ring-blue-500"
+                                                        />
+                                                        <span className="text-sm text-gray-700">
+                                                            {member.firstName} {member.lastName}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                 </div>
                             </div>
 

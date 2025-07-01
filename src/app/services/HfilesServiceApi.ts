@@ -71,8 +71,11 @@ export const BasicDetailsList = async (userId:number ) =>{
   return axiosInstance.get(`${endpoints.PROFILE_DETAILS.List_Details}/${userId }` )
 }
 
-export const ListFlag = async (userId: number) => {
-  return axiosInstance.get(endpoints.PROFILE_DETAILS.FLAG(userId));
+
+export const ListFlag = async (userId: number, countryCode: string) => {
+  return axiosInstance.get(endpoints.PROFILE_DETAILS.FLAG(userId), {
+    params: { countryCode }
+  });
 };
 
 
@@ -166,3 +169,16 @@ export const ListReport = async (userId?: number, reportType?: string) => {
   return axiosInstance.get(url);
 };
 
+export const DeleteReport = async (reportId : number) => {
+  return axiosInstance.patch(endpoints.REPORTADDED.DeleteReport(reportId));
+};
+
+
+export const ReportShare = async (data:any) =>{
+  return axiosInstance.post(`${endpoints.REPORTADDED.ShareReport}`,data)
+}
+
+export const ReportEdit = async (reportId: number, payload: { reportName: string; accessUpdates: { independentUserId: number; accessStatus: boolean; }[]; }) => {
+  return axiosInstance.patch(endpoints.REPORTADDED.EditReport(reportId), payload, 
+  );
+};

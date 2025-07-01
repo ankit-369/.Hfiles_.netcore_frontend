@@ -24,71 +24,48 @@ interface FormData {
   emergencyCountryCode: string;
 }
 
-interface State {
-  id: string;
-  name: string;
-}
-
-interface City {
-  id: string;
-  name: string;
-}
-
 const validationSchema = Yup.object({
   firstName: Yup.string()
     .matches(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces')
     .required('First name is required')
     .trim(),
-
   lastName: Yup.string()
     .matches(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces')
     .required('Last name is required')
     .trim(),
-
   dateOfBirth: Yup.date()
     .required('Date of birth is required')
     .max(new Date(), 'Date of birth cannot be in the future'),
-
   contactNumber: Yup.string()
     .matches(/^[0-9]{10}$/, 'Contact number must be exactly 10 digits')
     .required('Contact number is required'),
-
   countryCode: Yup.string()
     .required('Country code is required'),
-
   email: Yup.string()
     .matches(
       /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
       "Please enter a valid email address"
     )
     .required("Email is required"),
-
   gender: Yup.string()
     .required('Gender is required')
     .notOneOf([''], 'Please select a gender'),
-
   bloodGroup: Yup.string()
     .notRequired(),
-
   pincode: Yup.string()
     .matches(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits and cannot start with 0')
     .notRequired(),
-
   state: Yup.string()
     .required('State is required'),
-
   city: Yup.string()
     .required('City is required'),
-
   emergencyContact: Yup.string()
     .matches(/^[0-9]{10}$/, 'Emergency contact must be exactly 10 digits')
     .notRequired(),
-
   emergencyCountryCode: Yup.string()
     .notRequired()
 });
 
-// OTP Validation Schema
 const otpValidationSchema = Yup.object({
   otp: Yup.string()
     .matches(/^[0-9]{6}$/, 'OTP must be exactly 6 digits')
@@ -100,11 +77,10 @@ const AddBasicDetails: React.FC = () => {
   const [profileImage, setProfileImage] = useState<string>('/96d6a80ddef94d5b7c78919843c68d25900f7981.png');
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [imageLoading, setImageLoading] = useState<boolean>(false);
-  const [states, setStates] = useState<State[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [listDetails, setListDetails] = useState<any>();
-  const [flagUrl, setFlagUrl] = useState<string | null>(null);
+  const [mainContactFlagUrl, setMainContactFlagUrl] = useState<string | null>(null) as any;
+  const [emergencyContactFlagUrl, setEmergencyContactFlagUrl] = useState<string | null>(null) as any;
   const [showOTPModal, setShowOTPModal] = useState<boolean>(false);
   const [otpLoading, setOtpLoading] = useState<boolean>(false);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
@@ -131,20 +107,15 @@ const AddBasicDetails: React.FC = () => {
   }, []);
 
   const otpFormik = useFormik({
-    initialValues: {
-      otp: ''
-    },
+    initialValues: { otp: '' },
     validationSchema: otpValidationSchema,
     onSubmit: async (values) => {
       await handleVerifyOTP(values.otp);
     }
   });
 
-  // Phone OTP formik
   const phoneOtpFormik = useFormik({
-    initialValues: {
-      otp: ''
-    },
+    initialValues: { otp: '' },
     validationSchema: otpValidationSchema,
     onSubmit: async (values) => {
       await handleVerifyPhoneOTP(values.otp);
@@ -248,15 +219,61 @@ const AddBasicDetails: React.FC = () => {
     }
   };
 
+  const extractDialingCode = (countryCodeValue: string): string => {
+    if (!countryCodeValue) return '';
+    try {
+      const countryData = JSON.parse(countryCodeValue);
+      return countryData.country || '';
+    } catch (e) {
+      return countryCodeValue;
+    }
+  };
+
+  const fetchMainContactFlag = async (countryCodeValue: string) => {
+    try {
+      const dialingCode = extractDialingCode(countryCodeValue);
+      if (!dialingCode) {
+        setMainContactFlagUrl(null);
+        return;
+      }
+
+      const currentUserId = await getUserId();
+      if (!currentUserId) return;
+
+      const response = await ListFlag(currentUserId, dialingCode);
+      setMainContactFlagUrl(response.data.data);
+    } catch (error) {
+      console.error("Error fetching main contact flag:", error);
+      setMainContactFlagUrl(null);
+    }
+  };
+
+  const fetchEmergencyContactFlag = async (countryCodeValue: string) => {
+    try {
+      const dialingCode = extractDialingCode(countryCodeValue);
+      if (!dialingCode) {
+        setEmergencyContactFlagUrl(null);
+        return;
+      }
+
+      const currentUserId = await getUserId();
+      if (!currentUserId) return;
+
+      const response = await ListFlag(currentUserId, dialingCode);
+      setEmergencyContactFlagUrl(response.data.data);
+    } catch (error) {
+      console.error("Error fetching emergency contact flag:", error);
+      setEmergencyContactFlagUrl(null);
+    }
+  };
+
   const handlePincodeChange = useCallback(async (pincode: string) => {
     if (pincode.length === 6) {
       setPincodeLoading(true);
       try {
         const response = await ListPincode(pincode);
-
         if (response && response.data) {
           const locationData = response.data.data;
-
           formik.setFieldValue('state', locationData.state || '');
           formik.setFieldValue('city', locationData.city || '');
         }
@@ -290,7 +307,15 @@ const AddBasicDetails: React.FC = () => {
     formik.setFieldValue(name, processedValue);
   }, [formik, handlePincodeChange]);
 
-  const handleRegularChange = formik.handleChange;
+  const handleRegularChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    formik.handleChange(e);
+    if (name === 'countryCode') {
+      fetchMainContactFlag(value);
+    } else if (name === 'emergencyCountryCode') {
+      fetchEmergencyContactFlag(value);
+    }
+  }, [formik]);
 
   const handleOTPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
@@ -316,14 +341,14 @@ const AddBasicDetails: React.FC = () => {
         email: currentEmail
       };
       const response = await OTPSend(payload);
-      toast.success(`${response.data.message}`)
+      toast.success(`${response.data.message}`);
       setUserId(currentUserId);
       setUserEmail(currentEmail);
       setShowOTPModal(true);
       otpFormik.resetForm();
       localStorage.setItem('isEmailVerified', 'true');
     } catch (error) {
-      console.log(error, "error")
+      console.log(error, "error");
     } finally {
       setOtpLoading(false);
     }
@@ -376,7 +401,8 @@ const AddBasicDetails: React.FC = () => {
   };
 
   const handleSendPhoneOTP = async () => {
-    setPhoneOtpLoading(true);
+    setPhoneOtpLoading
+    (true);
     try {
       const currentUserId = await getUserId();
       const newCountryCode = formik.values.countryCode;
@@ -442,22 +468,16 @@ const AddBasicDetails: React.FC = () => {
   };
 
   const formatDateToDDMMYYYY = (dateString: string): string => {
-  if (!dateString) return '';
-  
-  try {
-    // Split the yyyy-mm-dd format
-    const [year, month, day] = dateString.split('-');
-    
-    // Validate that we have all parts
-    if (!year || !month || !day) return dateString;
-    
-    // Return in dd-mm-yyyy format
-    return `${day}-${month}-${year}`;
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return dateString; // Return original if conversion fails
-  }
-};
+    if (!dateString) return '';
+    try {
+      const [year, month, day] = dateString.split('-');
+      if (!year || !month || !day) return dateString;
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
+  };
 
   const handleVerifyOTP = async (otp: string) => {
     setVerifyLoading(true);
@@ -473,7 +493,6 @@ const AddBasicDetails: React.FC = () => {
       await ProfileDetailsList();
     } catch (error) {
       console.log(error, "error");
-
     } finally {
       setVerifyLoading(false);
     }
@@ -484,10 +503,8 @@ const AddBasicDetails: React.FC = () => {
       await ListCountry();
       await ProfileDetailsList();
     };
-
     initializeData();
   }, []);
-
 
   const ProfileDetailsList = async () => {
     try {
@@ -559,7 +576,7 @@ const AddBasicDetails: React.FC = () => {
       formik.setValues({
         firstName: data.firstName || '',
         lastName: data.lastName || '',
-        dateOfBirth: formatDateToDDMMYYYY(data.dob || '' ),
+        dateOfBirth: formatDateToDDMMYYYY(data.dob || ''),
         contactNumber: data.phone || '',
         countryCode: formatCountryCode(data.countryCode),
         email: data.email || '',
@@ -572,6 +589,19 @@ const AddBasicDetails: React.FC = () => {
         emergencyCountryCode: formatCountryCode(data.emergencyCountryCode),
       });
 
+      if (data.countryCode) {
+        const mainCountryCode = formatCountryCode(data.countryCode);
+        if (mainCountryCode) {
+          fetchMainContactFlag(mainCountryCode);
+        }
+      }
+
+      if (data.emergencyCountryCode) {
+        const emergencyCountryCode = formatCountryCode(data.emergencyCountryCode);
+        if (emergencyCountryCode) {
+          fetchEmergencyContactFlag(emergencyCountryCode);
+        }
+      }
     } catch (error) {
       console.error("Error fetching profile details:", error);
     }
@@ -580,22 +610,6 @@ const AddBasicDetails: React.FC = () => {
   useEffect(() => {
     ProfileDetailsList();
   }, []);
-
-  const FlagList = async () => {
-    const encryptedUserId = localStorage.getItem("userId");
-    if (!encryptedUserId) {
-      return;
-    }
-
-    const userIdStr = await decryptData(encryptedUserId);
-    const userId = parseInt(userIdStr, 10);
-    const response = await ListFlag(userId);
-    setFlagUrl(response.data.data);
-  }
-
-  useEffect(() => {
-    FlagList();
-  }, [])
 
   const ListCountry = async () => {
     try {
@@ -618,27 +632,33 @@ const AddBasicDetails: React.FC = () => {
       if (dbCountryCode) {
         const formatCountryCode = (dialingCode: any) => {
           if (!dialingCode) return '';
-
           let cleanDialingCode = dialingCode.toString().trim();
           if (!cleanDialingCode.startsWith('+')) {
             cleanDialingCode = '+' + cleanDialingCode;
           }
-
           const country = listCountyCode.find(c => {
             const countryDialingCode = c.dialingCode.toString().trim();
             return countryDialingCode === cleanDialingCode ||
               countryDialingCode === dialingCode.toString().trim();
           });
-
           return country ? JSON.stringify({
             country: country.country,
             dialingCode: country.dialingCode,
           }) : '';
         };
 
-        formik.setFieldValue('countryCode', formatCountryCode(dbCountryCode));
+        const mainCountryCodeValue = formatCountryCode(dbCountryCode);
+        formik.setFieldValue('countryCode', mainCountryCodeValue);
+        if (mainCountryCodeValue) {
+          fetchMainContactFlag(mainCountryCodeValue);
+        }
+
         if (dbEmergencyCountryCode) {
-          formik.setFieldValue('emergencyCountryCode', formatCountryCode(dbEmergencyCountryCode));
+          const emergencyCountryCodeValue = formatCountryCode(dbEmergencyCountryCode);
+          formik.setFieldValue('emergencyCountryCode', emergencyCountryCodeValue);
+          if (emergencyCountryCodeValue) {
+            fetchEmergencyContactFlag(emergencyCountryCodeValue);
+          }
         }
 
         const country = listCountyCode.find(c => {
@@ -662,15 +682,12 @@ const AddBasicDetails: React.FC = () => {
         toast.error('Image size should be less than 5MB');
         return;
       }
-
       if (!file.type.match(/^image\/(png|jpg|jpeg)$/)) {
         toast.error('Please select a valid image file (PNG, JPG, JPEG)');
         return;
       }
-
       setImageLoading(true);
       setProfileImageFile(file);
-
       const reader = new FileReader();
       reader.onload = (e) => {
         setProfileImage(e.target?.result as string);
@@ -693,7 +710,7 @@ const AddBasicDetails: React.FC = () => {
     return (
       <div className="relative mb-4">
         <div className="relative">
-          <i className="fa-solid fa-phone absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+          <i className="fa-solid fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
           <div className={`bg-white rounded-full border ${formik.touched.contactNumber && formik.errors.contactNumber ? 'border-red-500' :
             formik.touched.countryCode && formik.errors.countryCode ? 'border-red-500' : 'border-gray-300'
             } overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all duration-200`}>
@@ -705,8 +722,8 @@ const AddBasicDetails: React.FC = () => {
                 value={formik.values.countryCode}
                 onChange={handleRegularChange}
                 onBlur={formik.handleBlur}
-                className="border-0 bg-transparent py-3 pl-7 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
-                style={{ minWidth: '120px' }}
+                className="border-0 bg-transparent py-2 sm:py-3 pl-6 sm:pl-7 pr-1 sm:pr-2 text-xs sm:text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                style={{ minWidth: '90px', maxWidth: '120px' }}
               >
                 <option value="">Country</option>
                 {Array.isArray(listCountyCode) &&
@@ -723,7 +740,7 @@ const AddBasicDetails: React.FC = () => {
                   ))}
               </select>
 
-              <div className="h-6 w-px bg-gray-300 mx-1"></div>
+              <div className="h-4 sm:h-6 w-px bg-gray-300 mx-1"></div>
               <input
                 type="text"
                 name="contactNumber"
@@ -731,17 +748,17 @@ const AddBasicDetails: React.FC = () => {
                 value={formik.values.contactNumber}
                 onChange={handleCustomChange}
                 onBlur={formik.handleBlur}
-                className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400"
+                className="flex-1 border-0 py-2 sm:py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400 text-xs sm:text-sm"
                 maxLength={10}
               />
 
-              {flagUrl && (
+              {mainContactFlagUrl && (
                 <img
-                  src={flagUrl}
+                  src={mainContactFlagUrl.flagUrl}
                   alt="Country flag"
-                  width={24}
-                  height={16}
-                  className="mr-4"
+                  width={20}
+                  height={14}
+                  className="mr-2 sm:mr-4"
                 />
               )}
             </div>
@@ -761,8 +778,8 @@ const AddBasicDetails: React.FC = () => {
     return (
       <div className="relative mb-4">
         <div className="relative">
-          <i className="fa-solid fa-phone absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
-          <div className={`bg-white rounded-full border  overflow-hidden
+          <i className="fa-solid fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
+          <div className={`bg-white rounded-full border overflow-hidden
             focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all duration-200`}>
 
             <div className="flex items-center">
@@ -772,8 +789,8 @@ const AddBasicDetails: React.FC = () => {
                 value={formik.values.emergencyCountryCode}
                 onChange={handleRegularChange}
                 onBlur={formik.handleBlur}
-                className="border-0 bg-transparent py-3 pl-7 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
-                style={{ minWidth: '120px' }}
+                className="border-0 bg-transparent py-2 sm:py-3 pl-6 sm:pl-7 pr-1 sm:pr-2 text-xs sm:text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                style={{ minWidth: '90px', maxWidth: '120px' }}
               >
                 <option value="">Country</option>
                 {Array.isArray(listCountyCode) &&
@@ -790,7 +807,7 @@ const AddBasicDetails: React.FC = () => {
                   ))}
               </select>
 
-              <div className="h-6 w-px bg-gray-300 mx-1"></div>
+              <div className="h-4 sm:h-6 w-px bg-gray-300 mx-1"></div>
 
               <input
                 type="text"
@@ -799,16 +816,16 @@ const AddBasicDetails: React.FC = () => {
                 value={formik.values.emergencyContact}
                 onChange={handleCustomChange}
                 onBlur={formik.handleBlur}
-                className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400"
+                className="flex-1 border-0 py-2 sm:py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400 text-xs sm:text-sm"
               />
 
-              {flagUrl && (
+              {emergencyContactFlagUrl && (
                 <img
-                  src={flagUrl}
+                  src={emergencyContactFlagUrl.flagUrl}
                   alt="Country flag"
-                  width={24}
-                  height={16}
-                  className="mr-4"
+                  width={20}
+                  height={14}
+                  className="mr-2 sm:mr-4"
                 />
               )}
             </div>
@@ -822,15 +839,15 @@ const AddBasicDetails: React.FC = () => {
     if (!showOTPModal) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
-          <div className="p-6">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fa-solid fa-envelope text-blue-600 text-2xl"></i>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4 sm:px-6">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg mx-auto">
+          <div className="p-4 sm:p-6">
+            <div className="text-center mb-4 sm:mb-6">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <i className="fa-solid fa-envelope text-blue-600 text-xl sm:text-2xl"></i>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Verify Your Email</h2>
-              <p className="text-gray-600 text-sm">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Verify Your Email</h2>
+              <p className="text-gray-600 text-sm sm:text-base">
                 We've sent a 6-digit OTP to your email address
               </p>
             </div>
@@ -839,27 +856,27 @@ const AddBasicDetails: React.FC = () => {
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-medium mb-2">Email Address</label>
                 <div className="relative">
-                  <i className="fa-solid fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <i className="fa-solid fa-envelope absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                   <input
                     type="email"
                     value={userEmail}
                     readOnly
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-gray-50 text-gray-700 focus:outline-none"
+                    className="w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border border-gray-300 rounded-full bg-gray-50 text-gray-700 text-xs sm:text-sm focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <label className="block text-gray-700 text-sm font-medium mb-2">Enter OTP</label>
                 <div className="relative">
-                  <i className="fa-solid fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <i className="fa-solid fa-key absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                   <input
                     type="text"
                     name="otp"
                     value={otpFormik.values.otp}
                     onChange={handleOTPChange}
                     onBlur={otpFormik.handleBlur}
-                    className={`w-full pl-12 pr-4 py-3 border ${otpFormik.touched.otp && otpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-lg tracking-widest`}
+                    className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${otpFormik.touched.otp && otpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-sm sm:text-lg tracking-wider sm:tracking-widest`}
                     placeholder="000000"
                     maxLength={6}
                   />
@@ -873,17 +890,17 @@ const AddBasicDetails: React.FC = () => {
                 <button
                   type="submit"
                   disabled={verifyLoading || !otpFormik.isValid}
-                  className={`w-full bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${verifyLoading || !otpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-semibold py-2 sm:py-3 px-6 rounded-full transition-all duration-300 text-sm sm:text-base ${verifyLoading || !otpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {verifyLoading ? 'Verifying...' : 'Verify OTP'}
                 </button>
 
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-3 sm:space-y-0">
                   <button
                     type="button"
                     onClick={handleEmailVerificationClick}
                     disabled={otpLoading}
-                    className={`flex-1 bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm ${otpLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex-1 bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-xs sm:text-sm ${otpLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {otpLoading ? 'Sending...' : 'Resend OTP'}
                   </button>
@@ -891,7 +908,7 @@ const AddBasicDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowOTPModal(false)}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-xs sm:text-sm"
                   >
                     Cancel
                   </button>
@@ -908,17 +925,17 @@ const AddBasicDetails: React.FC = () => {
     if (!showOTPPhoneModal) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
-          <div className="p-6">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fa-solid fa-phone text-blue-600 text-2xl"></i>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4 sm:px-6">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg mx-auto">
+          <div className="p-4 sm:p-6">
+            <div className="text-center mb-4 sm:mb-6">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <i className="fa-solid fa-phone text-blue-600 text-xl sm:text-2xl"></i>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
                 {phoneOtpStep === 'verify' ? 'Verify Your Phone' : 'Enter OTP'}
               </h2>
-              <p className="text-gray-600 text-sm">
+              <p className="text-gray-600 text-sm sm:text-base">
                 {phoneOtpStep === 'verify'
                   ? 'Confirm your phone number to receive OTP'
                   : 'Enter the 6-digit OTP sent to your phone'
@@ -930,14 +947,14 @@ const AddBasicDetails: React.FC = () => {
               <div>
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-medium mb-2">Current Phone</label>
-                  <div className="flex items-center bg-gray-50 rounded-full p-3">
-                    <span className="text-gray-600 text-sm">
+                  <div className="flex items-center bg-gray-50 rounded-full p-2 sm:p-3">
+                    <span className="text-gray-600 text-xs sm:text-sm">
                       {oldCountryCode} {oldPhoneNumber}
                     </span>
                   </div>
                 </div>
 
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                   <label className="block text-gray-700 text-sm font-medium mb-2">New Phone Number</label>
                   <div className={`bg-white rounded-full border ${formik.touched.contactNumber && formik.errors.contactNumber ? 'border-red-500' :
                     formik.touched.countryCode && formik.errors.countryCode ? 'border-red-500' : 'border-gray-300'
@@ -949,8 +966,8 @@ const AddBasicDetails: React.FC = () => {
                         value={formik.values.countryCode}
                         onChange={handleRegularChange}
                         onBlur={formik.handleBlur}
-                        className="border-0 bg-transparent py-3 pl-4 pr-2 text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
-                        style={{ minWidth: '120px' }}
+                        className="border-0 bg-transparent py-2 sm:py-3 pl-4 sm:pl-6 pr-1 sm:pr-2 text-xs sm:text-sm focus:ring-0 focus:outline-none text-gray-700 font-medium"
+                        style={{ minWidth: '90px', maxWidth: '120px' }}
                       >
                         <option value="">Country</option>
                         {Array.isArray(listCountyCode) &&
@@ -967,7 +984,7 @@ const AddBasicDetails: React.FC = () => {
                           ))}
                       </select>
 
-                      <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                      <div className="h-4 sm:h-6 w-px bg-gray-300 mx-1"></div>
 
                       <input
                         type="text"
@@ -976,7 +993,7 @@ const AddBasicDetails: React.FC = () => {
                         value={formik.values.contactNumber}
                         onChange={handleCustomChange}
                         onBlur={formik.handleBlur}
-                        className="flex-1 border-0 py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400"
+                        className="flex-1 border-0 py-2 sm:py-3 px-2 bg-transparent focus:ring-0 focus:outline-none text-gray-700 placeholder-gray-400 text-xs sm:text-sm"
                         maxLength={10}
                       />
                     </div>
@@ -994,7 +1011,7 @@ const AddBasicDetails: React.FC = () => {
                     type="button"
                     onClick={handleSendPhoneOTP}
                     disabled={phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode}
-                    className={`w-full bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode
+                    className={`w-full bg-blue-600 hover:bg-blue-700 cursor-pointer text-white font-semibold py-2 sm:py-3 px-6 rounded-full transition-all duration-300 text-sm sm:text-base ${phoneOtpLoading || !formik.values.contactNumber || !formik.values.countryCode
                       ? 'opacity-50 cursor-not-allowed'
                       : ''
                       }`}
@@ -1005,7 +1022,7 @@ const AddBasicDetails: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowOTPPhoneModal(false)}
-                    className="w-full bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300"
+                    className="w-full bg-gray-100 hover:bg-gray-200 cursor-pointer text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-xs sm:text-sm"
                   >
                     Cancel
                   </button>
@@ -1016,28 +1033,28 @@ const AddBasicDetails: React.FC = () => {
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-medium mb-2">Phone Number</label>
                   <div className="relative">
-                    <i className="fa-solid fa-phone absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <i className="fa-solid fa-phone absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     <input
                       type="text"
                       value={`${formik.values.countryCode ? JSON.parse(formik.values.countryCode).dialingCode : ''} ${formik.values.contactNumber}`}
                       readOnly
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-gray-50 text-gray-700 focus:outline-none"
+                      className="w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border border-gray-300 rounded-full bg-gray-50 text-gray-700 text-xs sm:text-sm focus:outline-none"
                     />
                   </div>
                 </div>
 
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                   <label className="block text-gray-700 text-sm font-medium mb-2">Enter OTP</label>
                   <div className="relative">
-                    <i className="fa-solid fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <i className="fa-solid fa-key absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     <input
                       type="text"
                       name="otp"
                       value={phoneOtpFormik.values.otp}
                       onChange={handlePhoneOTPChange}
                       onBlur={phoneOtpFormik.handleBlur}
-                      className={`w-full pl-12 pr-4 py-3 border ${phoneOtpFormik.touched.otp && phoneOtpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'
-                        } rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-lg tracking-widest`}
+                      className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${phoneOtpFormik.touched.otp && phoneOtpFormik.errors.otp ? 'border-red-500' : 'border-gray-300'
+                        } rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-center text-sm sm:text-lg tracking-wider sm:tracking-widest`}
                       placeholder="000000"
                     />
                   </div>
@@ -1050,18 +1067,18 @@ const AddBasicDetails: React.FC = () => {
                   <button
                     type="submit"
                     disabled={phoneVerifyLoading || !phoneOtpFormik.isValid}
-                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 ${phoneVerifyLoading || !phoneOtpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''
+                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 sm:py-3 px-6 rounded-full transition-all duration-300 text-sm sm:text-base ${phoneVerifyLoading || !phoneOtpFormik.isValid ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                   >
                     {phoneVerifyLoading ? 'Verifying...' : 'Verify OTP'}
                   </button>
 
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-3 sm:space-y-0">
                     <button
                       type="button"
                       onClick={handleSendPhoneOTP}
                       disabled={phoneOtpLoading}
-                      className={`flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm ${phoneOtpLoading ? 'opacity-50 cursor-not-allowed' : ''
+                      className={`flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-xs sm:text-sm ${phoneOtpLoading ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                     >
                       {phoneOtpLoading ? 'Sending...' : 'Resend OTP'}
@@ -1073,7 +1090,7 @@ const AddBasicDetails: React.FC = () => {
                         setPhoneOtpStep('verify');
                         phoneOtpFormik.resetForm();
                       }}
-                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-xs sm:text-sm"
                     >
                       Back
                     </button>
@@ -1081,7 +1098,7 @@ const AddBasicDetails: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowOTPPhoneModal(false)}
-                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-sm"
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-full transition-all duration-300 text-xs sm:text-sm"
                     >
                       Cancel
                     </button>
@@ -1097,11 +1114,11 @@ const AddBasicDetails: React.FC = () => {
 
   return (
     <MasterHome>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
-        <div className="flex justify-between items-center p-5">
+      <div className="h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-134px)] 2xl:h-[calc(100vh-120x)] bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
+        <div className="flex justify-between items-center p-4 sm:p-5">
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200"
+            className="text-gray-600 hover:text-gray-800 font-medium text-sm sm:text-base transition-colors duration-200"
           >
             Back to Home
           </button>
@@ -1109,10 +1126,10 @@ const AddBasicDetails: React.FC = () => {
 
         {!isEmailVerified && !userEmail?.isEmailVerified && (
           <div
-            className='bg-red-300 mb-3 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2'
+            className='bg-red-300 mb-3 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2 mx-4 sm:mx-6'
             onClick={handleEmailVerificationClick}
           >
-            <p className="text-red-800 font-medium">
+            <p className="text-red-800 font-medium text-sm sm:text-base">
               {otpLoading ? 'Sending OTP...' : 'Please Verify Email - Click Here'}
             </p>
           </div>
@@ -1120,31 +1137,29 @@ const AddBasicDetails: React.FC = () => {
 
         {!isPhoneVerified && (
           <div
-            className='bg-red-300 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2'
+            className='bg-red-300 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2 mx-4 sm:mx-6'
             onClick={handlePhoneVerificationClick}
           >
-            <p className="text-red-800 font-medium">
+            <p className="text-red-800 font-medium text-sm sm:text-base">
               {otpLoading ? 'Sending OTP...' : 'Please Verify Phone - Click Here'}
             </p>
           </div>
         )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
-            <div className="w-full lg:w-auto lg:min-w-[400px] flex flex-col items-center">
-              <div className="mb-6 relative">
-                <div className="w-48 h-48 rounded-full border-4 border-yellow-400 p-1 bg-white shadow-lg">
+          <div className="flex flex-col md:flex-row gap-6 md:gap-8 lg:gap-12 xl:gap-16 items-start">
+            <div className="w-full md:w-64 lg:w-80 xl:w-96 flex flex-col items-center">
+              <div className="mb-4 sm:mb-6 relative">
+                <div className="w-34 h-34 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full border-4 border-yellow-400 p-1 bg-white shadow-lg">
                   {imageLoading ? (
                     <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
                     </div>
                   ) : (
                     <img
                       id="imagePreview"
                       src={profileImage}
                       alt="Profile"
-                      width={180}
-                      height={180}
                       className="w-full h-full rounded-full object-cover"
                       onError={(e) => {
                         e.currentTarget.src = '/assets/default-user-profile.png';
@@ -1154,7 +1169,7 @@ const AddBasicDetails: React.FC = () => {
                 </div>
                 {imageLoading && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                    <div className="text-white text-sm">Loading...</div>
+                    <div className="text-white text-xs sm:text-sm">Loading...</div>
                   </div>
                 )}
               </div>
@@ -1162,7 +1177,7 @@ const AddBasicDetails: React.FC = () => {
               <button
                 onClick={showFileUpload}
                 disabled={imageLoading}
-                className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium py-3 px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${imageLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium py-2 sm:py-3 px-6 sm:px-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 text-xs sm:text-sm ${imageLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {imageLoading ? 'Processing...' : 'Change Profile Image'}
               </button>
@@ -1175,30 +1190,30 @@ const AddBasicDetails: React.FC = () => {
               />
             </div>
 
-            <div className="flex-1 w-full max-w-5xl">
-              <div className="text-center mb-8">
-                <h1 className="text-2xl lg:text-3xl font-bold text-blue-700 mb-3">
+            <div className="flex-1 w-full max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+              <div className="text-center mb-6 sm:mb-8">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-700 mb-2 sm:mb-3">
                   Ready to manage your health? Let's get you set up!
                 </h1>
-                <p className="text-gray-600 text-base">
+                <p className="text-gray-600 text-sm sm:text-base">
                   Fill in your details to kickstart your health journey
                 </p>
-                <div className="w-20 h-1 bg-blue-400 mx-auto mt-4 rounded-full"></div>
+                <div className="w-16 sm:w-20 h-1 bg-blue-400 mx-auto mt-3 sm:mt-4 rounded-full"></div>
               </div>
 
               <form onSubmit={formik.handleSubmit}>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                   <div className="space-y-4">
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="text"
                           name="firstName"
                           value={formik.values.firstName}
                           onChange={handleCustomChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm`}
                           placeholder="rahul"
                           required
                         />
@@ -1210,14 +1225,14 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="text"
                           name="lastName"
                           value={formik.values.lastName}
                           onChange={handleCustomChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm`}
                           placeholder="sinha"
                           required
                         />
@@ -1229,14 +1244,14 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-calendar-days absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-calendar-days absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="date"
                           name="dateOfBirth"
                           value={formik.values.dateOfBirth}
                           onChange={handleRegularChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm`}
                           placeholder="15-12-1997"
                           required
                           max={new Date().toISOString().split('T')[0]}
@@ -1251,14 +1266,14 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="email"
                           name="email"
                           value={formik.values.email}
                           onChange={handleRegularChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.email && formik.errors.email ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.email && formik.errors.email ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm`}
                           placeholder="kamleshfiles2024@gmail.com"
                           required
                         />
@@ -1272,13 +1287,13 @@ const AddBasicDetails: React.FC = () => {
                   <div className="space-y-4">
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-venus-mars absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-venus-mars absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <select
                           name="gender"
                           value={formik.values.gender}
                           onChange={handleRegularChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.gender && formik.errors.gender ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${formik.values.gender ? 'text-gray-700' : 'text-gray-400'}`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.gender && formik.errors.gender ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm ${formik.values.gender ? 'text-gray-700' : 'text-gray-400'}`}
                           required
                         >
                           <option value="" disabled>Select Gender</option>
@@ -1294,13 +1309,13 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-droplet absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-droplet absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <select
                           name="bloodGroup"
                           value={formik.values.bloodGroup}
                           onChange={handleRegularChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.bloodGroup && formik.errors.bloodGroup ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${formik.values.bloodGroup && formik.values.bloodGroup !== '0' ? 'text-gray-700' : 'text-gray-400'}`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.bloodGroup && formik.errors.bloodGroup ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm ${formik.values.bloodGroup && formik.values.bloodGroup !== '0' ? 'text-gray-700' : 'text-gray-400'}`}
                         >
                           <option value="">Select BloodGroup</option>
                           <option value="A+">A+</option>
@@ -1320,21 +1335,21 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-location-dot absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-location-dot absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="text"
                           name="pincode"
                           value={formik.values.pincode}
                           onChange={handleCustomChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.pincode && formik.errors.pincode ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 ${pincodeLoading ? 'opacity-50' : ''}`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.pincode && formik.errors.pincode ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm ${pincodeLoading ? 'opacity-50' : ''}`}
                           placeholder="400020"
                           maxLength={6}
                           disabled={pincodeLoading}
                         />
                         {pincodeLoading && (
-                          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-blue-600"></div>
                           </div>
                         )}
                       </div>
@@ -1345,14 +1360,14 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-map-location-dot absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-map-location-dot absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="text"
                           name="state"
                           value={formik.values.state}
                           onChange={handleRegularChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.state && formik.errors.state ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.state && formik.errors.state ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm`}
                           placeholder="State (Auto-filled by pincode)"
                           required
                         />
@@ -1364,14 +1379,14 @@ const AddBasicDetails: React.FC = () => {
 
                     <div className="relative mb-4">
                       <div className="relative">
-                        <i className="fa-solid fa-city absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-lg"></i>
+                        <i className="fa-solid fa-city absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-500 z-10 text-base sm:text-lg"></i>
                         <input
                           type="text"
                           name="city"
                           value={formik.values.city}
                           onChange={handleRegularChange}
                           onBlur={formik.handleBlur}
-                          className={`w-full pl-12 pr-4 py-3 border ${formik.touched.city && formik.errors.city ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200`}
+                          className={`w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 border ${formik.touched.city && formik.errors.city ? 'border-red-500' : 'border-gray-300'} rounded-full bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-xs sm:text-sm`}
                           placeholder="City (Auto-filled by pincode)"
                           required
                         />
@@ -1385,18 +1400,18 @@ const AddBasicDetails: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center space-y-4 mt-8">
+                <div className="flex flex-col items-center space-y-4 mt-6 sm:mt-8">
                   <button
                     type="submit"
-                    disabled={loading || !formik.isValid}
-                    className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold py-4 px-16 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[200px] ${loading || !formik.isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={loading}
+                    className={`bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold py-3 sm:py-4 px-12 sm:px-16 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[160px] sm:min-w-[200px] text-sm sm:text-base ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {loading ? 'Updating...' : 'Update'}
                   </button>
 
                   <a
                     href="/change-password"
-                    className="text-center text-sm hover:underline transition-all duration-200"
+                    className="text-center text-xs sm:text-sm hover:underline transition-all duration-200"
                   >
                     <span className="text-gray-600">Click Here to </span>
                     <span className="text-blue-700 font-semibold underline">Change Password</span>
@@ -1404,7 +1419,7 @@ const AddBasicDetails: React.FC = () => {
                 </div>
 
                 {formik.status && (
-                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center text-xs sm:text-sm">
                     {formik.status}
                   </div>
                 )}
