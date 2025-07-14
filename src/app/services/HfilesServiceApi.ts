@@ -182,3 +182,78 @@ export const ReportEdit = async (reportId: number, payload: { reportName: string
   return axiosInstance.patch(endpoints.REPORTADDED.EditReport(reportId), payload, 
   );
 };
+
+
+// Medical History 
+
+export const HistoryList = async (userId:number) => {
+  return axiosInstance.get(`${endpoints.MEDICALHISTORY.MedicalList}/${userId}`)
+}
+
+export interface SurgeryFormData {
+  surgeryName: string;
+  hospitalName: string;
+  drName: string;
+  surgeryDate: string;
+}
+export const AddHistory = async (userId: number, formData: SurgeryFormData) => {
+  return axiosInstance.post(
+    endpoints.MEDICALHISTORY.AddMedical(userId),
+    formData,
+     {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+};
+
+interface EditPayload {
+  surgeryName: string;
+  hospitalName: string;
+  drName: string;
+  surgeryDate: string; // "DD-MM-YYYY"
+}
+export const HistoryEdit = async (userId:number,  data: EditPayload) => {
+  return axiosInstance.patch(`${endpoints.MEDICALHISTORY.EditMedical}/${userId}`, data)
+}
+
+export const DeleteData = async (id:number) =>{
+  return axiosInstance.delete(`${endpoints.MEDICALHISTORY.DeleteMedical}/${id}`)
+}
+
+
+
+/// MY members page
+
+export const GetRequestList = async (userId: number) => {
+  return axiosInstance.get(endpoints.REQUESTS.ListRequests(userId));
+};
+
+export const RespondToRequest = async (data: { requestId: number; status: 'accept' | 'reject' }) => {
+  const actionMap: Record<'accept' | 'reject', 'Accepted' | 'Rejected'> = {
+    accept: 'Accepted',
+    reject: 'Rejected',  // Fixed: Changed from 'rejected' to 'Rejected'
+  };
+  
+  const payload = {
+    requestId: data.requestId,
+    action: actionMap[data.status],
+  };
+  
+  return axiosInstance.post(endpoints.REQUESTS.RESPOND_REQUEST, payload);
+};
+
+export const SoftDeleteMember = async (id: number) => {
+  const url = endpoints.REQUESTS.DeleteMember(id);
+  return axiosInstance.put(url);
+};
+
+
+export const EditMember = async (memberId: number, data: FormData) => {
+  return axiosInstance.patch(endpoints.REQUESTS.EditMember(memberId), data, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};

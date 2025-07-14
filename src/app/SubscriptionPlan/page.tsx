@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Check, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import MasterHome from '../components/MasterHome';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCircleCheck } from '@fortawesome/free-regular-svg-icons';
 
 // Type definitions
 interface RazorpayResponse {
@@ -40,7 +43,7 @@ interface RazorpayOptions {
 declare global {
   interface Window {
     Razorpay: {
-      new (options: RazorpayOptions): {
+      new(options: RazorpayOptions): {
         open(): void;
         close(): void;
       };
@@ -50,9 +53,9 @@ declare global {
 
 const SubscriptionCards: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [loading, setLoading] = useState<{ standard: boolean; premium: boolean }>({ 
-    standard: false, 
-    premium: false 
+  const [loading, setLoading] = useState<{ standard: boolean; premium: boolean }>({
+    standard: false,
+    premium: false
   });
   const [formData, setFormData] = useState<{
     email: string;
@@ -229,9 +232,9 @@ const SubscriptionCards: React.FC = () => {
   // Handle payment success
   const handlePaymentSuccess = async (response: RazorpayResponse, plan: string): Promise<void> => {
     try {
-      setLoading(prev => ({ 
-        ...prev, 
-        [plan.toLowerCase()]: true 
+      setLoading(prev => ({
+        ...prev,
+        [plan.toLowerCase()]: true
       }));
 
       // Send to your charge endpoint
@@ -261,140 +264,113 @@ const SubscriptionCards: React.FC = () => {
       console.error('Payment verification failed:', error);
       alert('❌ Payment verification failed. Please contact support.');
     } finally {
-      setLoading(prev => ({ 
-        ...prev, 
-        [plan.toLowerCase()]: false 
+      setLoading(prev => ({
+        ...prev,
+        [plan.toLowerCase()]: false
       }));
     }
   };
 
-
   return (
     <MasterHome>
-      <div>
+      <div className="h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-139px)] 2xl:h-[calc(100vh-140px)] bg-gray-50 py-8">
         {/* Back to Home Button */}
-        <div className="flex justify-start py-1 px-4 md:px-6" style={{ marginTop: '30px', color: 'gray' }}>
-          <Link href="/" className="back-arrow-btn">
-            Back to Home
+        <div className="flex justify-start px-4 md:px-8 mb-6">
+          <Link href="/dashboard" className="flex items-center text-gray-600 hover:text-gray-800 transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
           </Link>
         </div>
 
         {/* Main Title Section */}
-        <div 
-          className="text-center mx-auto card-box" 
-          style={{ marginTop: '5vh' }}
-        >
-          <div className="flex justify-center">
-            <h1 
-              className="font-bold text-2xl md:text-4xl lg:text-5xl px-4" 
-              style={{ color: '#0331b5', textAlign: 'center' }}
-            >
-              Subscription Plans
-              <hr/>
-            </h1> 
-          </div>
-          <div className="flex justify-center mt-4">
-            <h4 
-              style={{ textAlign: 'center', marginBottom: '50px' }}
-              className="font-bold text-base md:text-lg lg:text-xl text-black px-4 max-w-3xl"
-            >
-              Choose a plan that fits your needs and stay in control of your health - every step of your Health.
-            </h4>
-          </div>
+        <div className="text-center mb-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-800 mb-4">
+            Subscription Plans
+          </h1>
+          <div className="border border-blue-800 w-35 mx-auto mb-2"></div>
+          <p className="text-black font-medium max-w-2xl mx-auto px-4">
+            Choose a plan that fits your needs and stay in control of your health — every step of the way.
+          </p>
         </div>
+        <div className='border mb-3 mx-auto' ></div>
 
-        {/* Cards Container - Responsive Layout */}
-        <div className="w-full p-4">
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '16px',
-            maxWidth: '1200px',
-            margin: '0 auto',
-            justifyItems: 'center'
-          }}>
-            
+        {/* Cards Container */}
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
             {/* Basic Plan */}
-            <div style={{ 
-              backgroundColor: '#b0dcd4', 
-              width: '100%',
-              maxWidth: '280px',
-              height: '466px',
-              borderRadius: '24px',
-              padding: '24px',
-              textAlign: 'center'
-            }}>
-              <p className="text-3xl font-bold mb-1" style={{ color: '#0331b5', fontSize: 'xx-large', fontWeight: '500' }}>Basic</p>
-              <p className="text-2xl font-bold mb-4" style={{ fontWeight: '600', fontSize: '18px' }}>FREE</p>
-              <hr style={{ marginTop: '19px', color: 'black' }} className="border-black mb-4 opacity-100" />
-              
-              <div className="text-left px-5 space-y-2" style={{ fontSize: '16px', textAlign: 'left', fontWeight: '400', padding: '10px 10px' }}>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+              style={{ backgroundColor: '#b0dcd4' }}>
+              <div className="text-center mb-9">
+                <h3 className="text-2xl font-bold text-blue-800 ">Basic</h3>
+                <div className="text-4xl font-bold text-gray-800">Free</div>
+              </div>
+
+              <hr className="border-gray-800 mb-6" />
+
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center text-sm text-black font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Add upto 5 members</span>
                 </div>
-                <div className="flex items-start">
-                  <div>
-                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Upload files with a total</span>
-                    <div className="pl-5" style={{ marginLeft: '24px' }}>Storage of up to 100 MB</div>
-                  </div>
+
+                <div className="flex items-center text-sm text-black font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>100 MB storage</span>
                 </div>
-                <div className="flex items-start line-through text-gray-600">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span style={{ textDecoration: 'line-through' }}>Wellness kit</span>
+                <div className="flex items-center text-sm text-black font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Upload PDF files</span>
                 </div>
-                <div className="flex items-start line-through text-gray-600">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span style={{ textDecoration: 'line-through' }}>Access to blogs</span>
+                <div className="flex items-center text-sm text-black font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Access to articles</span>
                 </div>
-                <div className="flex items-start line-through text-gray-600">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span style={{ textDecoration: 'line-through' }}>Membership card</span>
+                <div className="flex items-center text-sm text-black font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span className="line-through text-black">Wellness kit</span>
                 </div>
-              </div>
+                <div className="flex items-center text-sm text-black font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span className="line-through text-black">Membership card</span>
+                </div>
+              </div> 
             </div>
 
             {/* Standard Plan */}
-            <div style={{ 
-              backgroundColor: '#fff44c', 
-              width: '100%',
-              maxWidth: '280px',
-              height: '466px',
-              borderRadius: '24px',
-              padding: '24px',
-              textAlign: 'center'
-            }}>
-              <p className="text-3xl font-bold mb-0" style={{ color: '#0331b5', fontSize: 'xx-large', fontWeight: '500' }}>Standard</p>
-              <p className="text-2xl font-bold mb-0" style={{ fontWeight: '600', fontSize: '18px' }}>Rs. 99/year</p>
-              <p className="text-lg line-through mb-1" style={{ textDecoration: 'line-through' }}>Rs. 149</p>
-              <hr className="border-black mb-4 opacity-100" style={{ color: 'black' }} />
-              
-              <div className="text-left px-5 space-y-2 mb-4" style={{ fontSize: '16px', textAlign: 'left', fontWeight: '400', padding: '10px 10px' }}>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+              style={{ backgroundColor: '#fff44c' }}>
+              <div className="text-center mb-5">
+                <h3 className="text-xl font-bold text-blue-800 mb-2">Standard</h3>
+                <div className="text-2xl font-bold text-gray-800">Rs. 99/year</div>
+                <div className="text-sm text-black font-medium line-through">Rs. 149/year</div>
+              </div>
+
+              <hr className="border-gray-800 mb-6" />
+
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Add upto 7 members</span>
                 </div>
-                <div className="flex items-start">
-                  <div>
-                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Upload files with a total</span>
-                    <div className="pl-5" style={{ marginLeft: '24px' }}>Storage of up to 300 MB</div>
-                  </div>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>300 MB storage</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Upload PDF files</span>
+                </div>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Wellness kit</span>
                 </div>
-                <div className="flex items-start">
-                  <div>
-                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Access to exclusive</span>
-                    <div className="pl-5">Article</div>
-                  </div>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Access to exclusive article</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Membership card</span>
                 </div>
               </div>
@@ -402,132 +378,95 @@ const SubscriptionCards: React.FC = () => {
               <button
                 onClick={handleStandardPayment}
                 disabled={loading.standard}
-                className="text-white font-medium border-none cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  width: '186px',
-                  height: '45px',
-                  backgroundColor: loading.standard ? '#666' : '#0331B5',
-                  fontSize: '20px',
-                  marginTop: '20px',
-                  borderRadius: '14px',
-                  color: 'white'
-                }}
+                className="w-full bg-blue-800 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
               >
                 {loading.standard ? 'Processing...' : 'Go Standard'}
               </button>
             </div>
 
             {/* Premium Plan */}
-            <div style={{ 
-              backgroundColor: '#f8ccc4', 
-              width: '100%',
-              maxWidth: '280px',
-              height: '466px',
-              borderRadius: '24px',
-              padding: '24px',
-              textAlign: 'center'
-            }}>
-              <p className="text-3xl font-bold mb-0" style={{ color: '#0331b5', fontSize: 'xx-large', fontWeight: '500' }}>Premium</p>
-              <p className="text-2xl font-bold mb-0" style={{ fontWeight: '600', fontSize: '18px' }}>Rs. 399/year</p>
-              <p className="text-lg line-through mb-1" style={{ textDecoration: 'line-through' }}>Rs. 799</p>
-              <hr className="border-black mb-4 opacity-100" style={{ color: 'black' }} />
-              
-              <div className="text-left px-5 space-y-2 mb-4" style={{ fontSize: '16px', textAlign: 'left', fontWeight: '400', padding: '10px 10px' }}>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+              style={{ backgroundColor: '#f8ccc4' }}>
+              <div className="text-center mb-5">
+                <h3 className="text-xl font-bold text-blue-800 mb-2">Premium</h3>
+                <div className="text-2xl font-bold text-gray-800">Rs. 399/year</div>
+                <div className="text-sm text-black font-medium line-through">Rs. 799/year</div>
+              </div>
+
+              <hr className="border-gray-800 mb-6" />
+
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Add upto 10 members</span>
                 </div>
-                <div className="flex items-start">
-                  <div>
-                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Upload files with a total</span>
-                    <div className="pl-5" style={{ marginLeft: '24px' }}>Storage of up to 1000 MB</div>
-                  </div>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>1000 MB storage</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Upload PDF, video files</span>
+                </div>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Wellness kit</span>
                 </div>
-                <div className="flex items-start">
-                  <div>
-                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Access to exclusive</span>
-                    <div className="pl-5">Article</div>
-                  </div>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Access to exclusive article</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>Membership card</span>
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
+                  <span>Premium membership card</span>
                 </div>
               </div>
 
               <button
                 onClick={handlePremiumPayment}
                 disabled={loading.premium}
-                className="text-white font-medium border-none cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  width: '186px',
-                  height: '45px',
-                  backgroundColor: loading.premium ? '#666' : '#0331B5',
-                  fontSize: '20px',
-                  marginTop: '20px',
-                  borderRadius: '14px',
-                  color: 'white'
-                }}
+                className="w-full bg-blue-800 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
               >
                 {loading.premium ? 'Processing...' : 'Go Premium'}
               </button>
             </div>
 
             {/* Advanced Plan */}
-            <div style={{ 
-              backgroundColor: '#90bcfc', 
-              width: '100%',
-              maxWidth: '280px',
-              height: '466px',
-              borderRadius: '24px',
-              padding: '24px',
-              textAlign: 'center'
-            }}>
-              <p className="text-3xl font-bold mb-2" style={{ color: '#0331b5', fontSize: 'xx-large', fontWeight: '500' }}>Advanced</p>
-              <p className="text-2xl font-bold mb-4" style={{ fontWeight: '600', fontSize: '18px', marginTop: '13px' }}>Contact Sales</p>
-              <hr className="border-black mb-4 opacity-100" style={{ marginTop: '13px', color: 'black' }} />
-              
-              <div className="text-left px-5 space-y-2 mb-4" style={{ fontSize: '16px', textAlign: 'left', fontWeight: '400', padding: '10px 10px' }}>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+              style={{ backgroundColor: '#90bcfc' }}>
+              <div className="text-center mb-9">
+                <h3 className="text-xl font-bold text-blue-800 mb-2">Advanced</h3>
+                <div className="text-2xl font-bold text-gray-800">Contact Sales</div>
+              </div>
+
+              <hr className="border-gray-800 mb-6" />
+
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Add unlimited members</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Unlimited storage</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Membership card</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Wellness program</span>
                 </div>
-                <div className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center text-sm font-bold">
+                  <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span>Personalized solutions</span>
                 </div>
               </div>
 
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="text-white font-medium border-none cursor-pointer hover:opacity-90 transition-opacity"
-                style={{
-                  width: '186px',
-                  height: '45px',
-                  backgroundColor: '#0331B5',
-                  fontSize: '20px',
-                  marginTop: '104px',
-                  borderRadius: '14px',
-                  color: 'white'
-                }}
+                className="w-full bg-blue-800 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 mt-10"
               >
                 Contact Sales
               </button>
@@ -545,7 +484,7 @@ const SubscriptionCards: React.FC = () => {
               >
                 ×
               </button>
-              
+
               <h3 className="text-xl font-bold mb-2">Drop us your query and we'll get in touch with you</h3>
               <p className="text-gray-600 mb-4">Please share some details regarding your query</p>
 
@@ -555,7 +494,7 @@ const SubscriptionCards: React.FC = () => {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="Your email"
                     className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -566,42 +505,20 @@ const SubscriptionCards: React.FC = () => {
                   <label className="block text-sm font-medium mb-1">Your query*</label>
                   <textarea
                     value={formData.query}
-                    onChange={(e) => setFormData({...formData, query: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, query: e.target.value })}
                     placeholder="Tell us how we can help"
                     rows={4}
                     className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
-                <button
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors border-none">
+                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors border-none">
                   Submit
                 </button>
               </div>
             </div>
           </div>
         )}
-
-        <style jsx>{`
-          @media (max-width: 768px) {
-            .cards-container {
-              grid-template-columns: 1fr !important;
-            }
-          }
-          
-          @media (min-width: 769px) and (max-width: 1024px) {
-            .cards-container {
-              grid-template-columns: repeat(2, 1fr) !important;
-            }
-          }
-          
-          @media (min-width: 1025px) {
-            .cards-container {
-              grid-template-columns: repeat(4, 1fr) !important;
-            }
-          }
-        `}</style>
-        
       </div>
     </MasterHome>
   );

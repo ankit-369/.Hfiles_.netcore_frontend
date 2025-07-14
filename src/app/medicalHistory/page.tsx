@@ -1,8 +1,43 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import MasterHome from '../components/MasterHome';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faChevronDown, faShareAlt, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faChevronDown, faShareAlt, faTimes, faTrash } from '@fortawesome/free-solid-svg-icons';
+import SurgicalHistory from '../components/SurgicalHistory';
+import { faEdit } from '@fortawesome/free-regular-svg-icons';
+import { AddHistory, DeleteData, HistoryEdit, HistoryList } from '../services/HfilesServiceApi';
+import { decryptData } from '../utils/webCrypto';
+import { toast, ToastContainer } from 'react-toastify';
+import { useRouter } from 'next/navigation';
+
+interface FormData {
+    surgeryName: string;
+    hospitalName: string;
+    drName: string;
+    surgeryDate: string;
+}
+
+interface FormErrors {
+    [key: string]: string;
+}
+
+interface SurgeryFormData {
+    surgeryName: string;
+    hospitalName: string;
+    drName: string;
+    surgeryDate: string;
+}
+
+interface HistoryItem {
+    user_surgery_id: number;
+    user_id: number;
+    user_surgery_details: string;
+    user_surgery_year: string;
+    hostname: string | null;
+    drname: string | null;
+}
 
 const MedicalPage = () => {
     const habits = [
@@ -25,6 +60,51 @@ const MedicalPage = () => {
     const [isDiseaseModalOpen, setIsDiseaseModalOpen] = useState(false);
     const [newDisease, setNewDisease] = useState("");
     const [medicalHistory, setMedicalHistory] = useState(["Barley", "Barley", "Barley", "Barley"]);
+    const [showForm, setShowForm] = useState(false);
+    const router = useRouter();
+    // Edit modal states
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+    const getUserId = async (): Promise<number> => {
+        try {
+            const encryptedUserId = localStorage.getItem("userId");
+            if (!encryptedUserId) return 0;
+            const userIdStr = await decryptData(encryptedUserId);
+            return parseInt(userIdStr, 10);
+        } catch (error) {
+            console.error("Error getting userId:", error);
+            return 0;
+        }
+    };
+
+    const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const AllHistory = async () => {
+        setIsLoading(true);
+        const currentUserId = await getUserId();
+        if (!currentUserId) {
+            toast.error("Please log in to view members.");
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const response = await HistoryList(currentUserId);
+            setHistoryList(response?.data?.data || []);
+            console.log(response.data.data, "API Response Data");
+        } catch (error) {
+            console.error("Error fetching history:", error);
+            setHistoryList([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        AllHistory();
+    }, []);
 
     const handleSelectionChange = (habit: string, value: string) => {
         setHabitSelections(prev => ({ ...prev, [habit]: value }));
@@ -61,6 +141,162 @@ const MedicalPage = () => {
             setNewDisease("");
             toggleDiseaseModal();
         }
+    };
+
+    const [formData, setFormData] = useState<SurgeryFormData>({
+        surgeryName: "",
+        hospitalName: "",
+        drName: "",
+        surgeryDate: "",
+    });
+    const [errors, setErrors] = useState<FormErrors>({});
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+        setErrors((prev) => ({
+            ...prev,
+            [name]: "",
+        }));
+    };
+
+    const formatDateToDDMMYYYY = (dateStr: string): string => {
+        const [year, month, day] = dateStr.split("-");
+        return `${day}-${month}-${year}`;
+    };
+
+    const handleSubmit = async () => {
+        const currentUserId = await getUserId();
+        if (!currentUserId) {
+            toast.error("Please log in to view members.");
+            return;
+        }
+
+        const newErrors: FormErrors = {};
+        if (!formData.surgeryName.trim()) newErrors.surgeryName = "Required";
+        if (!formData.hospitalName.trim()) newErrors.hospitalName = "Required";
+        if (!formData.drName.trim()) newErrors.drName = "Required";
+        if (!formData.surgeryDate.trim()) newErrors.surgeryDate = "Required";
+
+        setErrors(newErrors);
+
+        if (Object.keys(newErrors).length === 0) {
+            try {
+                const formattedData = {
+                    ...formData,
+                    surgeryDate: formatDateToDDMMYYYY(formData.surgeryDate),
+                };
+
+                const response = await AddHistory(currentUserId, formattedData);
+                const savedData = response.data;
+
+                setFormData({ surgeryName: "", hospitalName: "", drName: "", surgeryDate: "" });
+                setShowForm(false);
+                toast.success(`${savedData.message}`);
+                await AllHistory();
+            } catch (error) {
+                console.error("Error saving surgical history:", error);
+            }
+        }
+    };
+
+    // Yup validation schema
+    const validationSchema = Yup.object({
+        surgeryName: Yup.string().required('Surgery details are required'),
+        drName: Yup.string().required('Doctor name is required'),
+        hospitalName: Yup.string().required('Hospital name is required'),
+        surgeryDate: Yup.string().required('Surgery date is required'),
+    });
+
+    // Formik configuration for edit modal
+    const editFormik = useFormik({
+        initialValues: {
+            surgeryName: "",
+            drName: "",
+            hospitalName: "",
+            surgeryDate: "",
+        },
+        validationSchema,
+        onSubmit: async (values) => {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+
+            if (editingIndex !== null) {
+                const surgeryId = historyList[editingIndex].user_surgery_id;
+
+                const formattedPayload = {
+                    ...values,
+                    surgeryDate: formatDateToDDMMYYYY(values.surgeryDate),
+                };
+
+                try {
+                    const response = await HistoryEdit(surgeryId, formattedPayload);
+                    toast.success(`${response.data.message}`);
+                    setIsEditModalOpen(false);
+                    setEditingIndex(null);
+                    editFormik.resetForm();
+                    await AllHistory();
+                } catch (error) {
+                    console.error("Error updating surgery:", error);
+                }
+            }
+        }
+        ,
+    });
+
+    // Handle edit button click
+    const handleEdit = (index: number) => {
+        const itemToEdit = historyList[index];
+        setEditingIndex(index);
+        const surgeryDate = itemToEdit.user_surgery_year;
+        let formattedDate = "";
+        if (surgeryDate && surgeryDate.includes("-")) {
+            const [day, month, year] = surgeryDate.split("-");
+            formattedDate = `${year}-${month}-${day}`;
+        }
+        editFormik.setValues({
+            surgeryName: itemToEdit.user_surgery_details || "",
+            drName: itemToEdit.drname || "",
+            hospitalName: itemToEdit.hostname || "",
+            surgeryDate: formattedDate,
+        });
+
+        setIsEditModalOpen(true);
+    };
+
+
+    // Handle modal close
+    const handleCloseEditModal = () => {
+        setIsEditModalOpen(false);
+        setEditingIndex(null);
+        editFormik.resetForm();
+    };
+
+    const handleDeleteSurgery = async () => {
+        if (editingIndex !== null) {
+            const item = historyList[editingIndex];
+            const surgeryId = item.user_surgery_id;
+            try {
+                const response = await DeleteData(surgeryId);
+                toast.success(`${response.data.message}`);
+                setIsEditModalOpen(false);
+                setEditingIndex(null);
+                editFormik.resetForm();
+                await AllHistory();
+            } catch (error) {
+                console.error(" Error deleting surgery:", error);
+            }
+        }
+    };
+
+    const handleNavigation = () => {
+        router.push('/familyPrescription');
     };
 
     return (
@@ -197,7 +433,10 @@ const MedicalPage = () => {
                     <p className="text-gray-800 text-sm sm:text-base">
                         Easily access your family's prescriptions whenever you need.
                     </p>
-                    <button className="bg-yellow-300 text-gray-900 font-semibold text-sm px-4 py-2 rounded-md shadow-sm hover:bg-yellow-400 transition">
+                    <button
+                        onClick={handleNavigation}
+                        className="bg-yellow-300 text-gray-900 font-semibold text-sm px-4 py-2 rounded-md shadow-sm hover:bg-yellow-400 transition cursor-pointer"
+                    >
                         Family prescription
                     </button>
                 </div>
@@ -354,7 +593,218 @@ const MedicalPage = () => {
                         </div>
                     </div>
                 )}
+
+                <div className="mt-4 mx-3">
+                    {/* Always show the heading outside the card */}
+                    <div className="flex justify-start mb-2">
+                        <p className="text-blue-800 text-lg font-bold">Surgical History</p>
+                    </div>
+
+                    <div className="border border-gray-300 rounded-lg p-6 bg-white shadow-sm">
+                        {showForm ? (
+                            <SurgicalHistory
+                                formData={formData}
+                                handleChange={handleChange}
+                                errors={errors}
+                                handleSubmit={handleSubmit}
+                            />
+                        ) : isLoading ? (
+                            <div className="text-center py-8">
+                                <p className="text-gray-600">Loading surgical history...</p>
+                            </div>
+                        ) : !historyList || historyList.length === 0 ? (
+                            <div className="text-center">
+                                <div className="inline-block border-b-1 border-gray-400 pb-1 px-6">
+                                    <p className="text-blue-800 text-lg font-bold">Surgical History</p>
+                                </div>
+                                <p className="text-gray-700 mt-4">
+                                    If you've had a surgery, add it now to keep a complete track of your medical history.
+                                </p>
+                                <button
+                                    className="mt-6 px-6 py-2 bg-yellow-300 hover:bg-yellow-400 text-gray-800 font-semibold rounded border border-black"
+                                    onClick={() => setShowForm(true)}
+                                >
+                                    Add Your First Surgery
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                {/* Table with border only */}
+                                <div className="rounded-xl overflow-hidden border border-gray-300">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-blue-100 text-gray-800 font-semibold">
+                                            <tr>
+                                                <th className="p-2 border-r">Surgery Name</th>
+                                                <th className="p-2 border-r">Surgery Year</th>
+                                                <th className="p-2 border-r">Hospital Name</th>
+                                                <th className="p-2 border-r">Doctor Name</th>
+                                                <th className="p-2"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historyList.map((item: HistoryItem, index: number) => (
+                                                <tr key={index} className="border-t">
+                                                    <td className="p-2 border-r">{item.user_surgery_details || "—"}</td>
+                                                    <td className="p-2 border-r">
+                                                        {item.user_surgery_year
+                                                            ? new Date(item.user_surgery_year).toLocaleDateString("en-US", {
+                                                                year: "numeric",
+                                                            })
+                                                            : "—"}
+                                                    </td>
+                                                    <td className="p-2 border-r">{item.hostname || "—"}</td>
+                                                    <td className="p-2 border-r">{item.drname || "—"}</td>
+                                                    <td className="p-2">
+                                                        <button
+                                                            className="text-red-500 hover:text-red-700"
+                                                            onClick={() => handleEdit(index)}
+                                                        >
+                                                            <FontAwesomeIcon icon={faEdit} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* OUTSIDE of border box */}
+                                <div className="flex justify-between items-center mt-4">
+                                    <span
+                                        className="text-blue-700 font-medium cursor-pointer"
+                                        onClick={() => setShowForm(true)}
+                                    >
+                                        Have another surgery to add?
+                                    </span>
+                                    <button
+                                        className="px-6 py-2 bg-yellow-300 hover:bg-yellow-400 text-gray-800 font-semibold rounded-lg border border-black"
+                                        onClick={() => setShowForm(true)}
+                                    >
+                                        Add More
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Edit Modal */}
+                {isEditModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg shadow-lg p-6 w-[500px] max-w-[90vw]">
+                            <div className="text-center mb-6">
+                                <h2 className="text-xl font-bold text-blue-800">Surgical History</h2>
+                                <div className="border-t border-blue-800 w-70 mx-auto mt-2"></div>
+                            </div>
+
+                            <form onSubmit={editFormik.handleSubmit}>
+                                {/* Surgery Details */}
+                                <div className="mb-4">
+                                    <div className="bg-blue-100 text-center py-2 px-4 mb-2 rounded-lg border">
+                                        <span className="text-lg font-bold text-black ">Surgery Details</span>
+                                    </div>
+                                    <textarea
+                                        name="surgeryName"
+                                        value={editFormik.values.surgeryName}
+                                        onChange={editFormik.handleChange}
+                                        onBlur={editFormik.handleBlur}
+                                        className={`w-full border ${editFormik.touched.surgeryName && editFormik.errors.surgeryName ? 'border-red-500' : 'border-black'} px-3 py-2 rounded-lg h-24 resize-none`}
+                                        placeholder="Enter surgery details..."
+                                    />
+                                    {editFormik.touched.surgeryName && editFormik.errors.surgeryName && (
+                                        <p className="text-red-500 text-sm mt-1">{editFormik.errors.surgeryName}</p>
+                                    )}
+                                </div>
+
+                                {/* Doctor's Name */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-bold text-black mb-1">
+                                        Doctor's Name:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="drName"
+                                        value={editFormik.values.drName}
+                                        onChange={editFormik.handleChange}
+                                        onBlur={editFormik.handleBlur}
+                                        className={`w-full border ${editFormik.touched.drName && editFormik.errors.drName ? 'border-red-500' : 'border-black'} px-3 py-2 rounded`}
+                                        placeholder="Enter doctor's name"
+                                    />
+                                    {editFormik.touched.drName && editFormik.errors.drName && (
+                                        <p className="text-red-500 text-sm mt-1">{editFormik.errors.drName}</p>
+                                    )}
+                                </div>
+
+
+                                {/* Hospital Name */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-bold text-black mb-1">
+                                        Hospital Name:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="hospitalName"
+                                        value={editFormik.values.hospitalName}
+                                        onChange={editFormik.handleChange}
+                                        onBlur={editFormik.handleBlur}
+                                        className={`w-full border ${editFormik.touched.hospitalName && editFormik.errors.hospitalName ? 'border-red-500' : 'border-black'} px-3 py-2 rounded`}
+                                        placeholder="Enter hospital name"
+                                    />
+                                    {editFormik.touched.hospitalName && editFormik.errors.hospitalName && (
+                                        <p className="text-red-500 text-sm mt-1">{editFormik.errors.hospitalName}</p>
+                                    )}
+                                </div>
+                                <div className="w-[120px] border border-black mb-2 mx-auto"></div>
+
+                                {/* Surgery Date */}
+                                <div className="mb-6">
+                                    <label className="block text-sm font-bold text-blue-800 mb-1">
+                                        Surgery Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="surgeryDate"
+                                        value={editFormik.values.surgeryDate}
+                                        onChange={editFormik.handleChange}
+                                        onBlur={editFormik.handleBlur}
+                                        className={`w-full border ${editFormik.touched.surgeryDate && editFormik.errors.surgeryDate ? 'border-red-500' : 'border-black'} px-3 py-2 rounded`}
+                                    />
+                                    {editFormik.touched.surgeryDate && editFormik.errors.surgeryDate && (
+                                        <p className="text-red-500 text-sm mt-1">{editFormik.errors.surgeryDate}</p>
+                                    )}
+                                </div>
+
+                                {/* Buttons */}
+                                <div className="flex justify-between items-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleDeleteSurgery}
+                                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                    >
+                                        Delete
+                                    </button>
+                                    <div className="flex space-x-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleCloseEditModal}
+                                            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-6 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
+            <ToastContainer />
         </MasterHome>
     );
 };

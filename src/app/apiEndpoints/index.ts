@@ -64,7 +64,21 @@ export const endpoints = {
       DeleteReport : (reportId:number) => `${API_NEW_Data}report/${reportId}/delete`,
       ShareReport : API_NEW_Data + "reports/share",
       EditReport : (reportId:number) => `${API_NEW_Data}report/${reportId}/edit`
-   }
+   },
+
+   MEDICALHISTORY :{
+      MedicalList : API_NEW_Data + "surgery/user",
+      AddMedical : (userId:number) => `${API_NEW_Data}surgery/${userId}/add`,
+      EditMedical : API_NEW_Data + "surgery",
+      DeleteMedical : API_NEW_Data + "surgery"
+   },
+
+     REQUESTS: {
+  ListRequests: (userId: number) => `${API_NEW_Data}member/${userId}/requests`,
+   RESPOND_REQUEST : API_NEW_Data + "requests/respond",
+      DeleteMember: (id: number) => `${API_NEW_Data}members/${id}/delete`,
+      EditMember: (id: number) => `${API_NEW_Data}members/${id}/edit`,
+}
 
 }
 

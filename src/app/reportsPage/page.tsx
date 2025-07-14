@@ -1,9 +1,9 @@
 'use client'
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Eye, FileText, Edit, Trash2, Share2 } from 'lucide-react';
+import { ArrowLeft, Eye, FileText, Edit, Trash2, Share2, MoreVertical } from 'lucide-react';
 import MasterHome from '../components/MasterHome';
-import { ListReport, DeleteReport, MemberList, ReportEdit } from '../services/HfilesServiceApi';
+import { ListReport, DeleteReport, MemberList, ReportEdit, ReportShare } from '../services/HfilesServiceApi';
 import { toast, ToastContainer } from 'react-toastify';
 import { decryptData } from '../utils/webCrypto';
 
@@ -49,6 +49,22 @@ const ReportsPage = () => {
     const [independent, setIndependent] = useState() as any;
     const [selectedIndependentIds, setSelectedIndependentIds] = useState<number[]>([]);
     const [reportAccessMap, setReportAccessMap] = useState<Record<number, number[]>>({});
+    const [selectedReports, setSelectedReports] = useState<Set<number>>(new Set());
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+    const [isSharing, setIsSharing] = useState(false);
+    const [shareData, setShareData] = useState<{
+        shareUrl: string;
+        expiryDate: string;
+        expiryTime: string;
+    } | null>(null);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [modalType, setModalType] = useState<'edit' | 'access' | null>(null);
+
+
+
+    const toggleDropdown = (id: any) => {
+        setOpenDropdownId((prev) => (prev === id ? null : id));
+    };
 
     useEffect(() => {
         const userIdParam = searchParams.get('userId');
@@ -96,6 +112,7 @@ const ReportsPage = () => {
     };
 
     const handleEdit = (report: Report) => {
+        setModalType('edit');
         setCurrentReport(report);
         setEditedReportName(report.reportName);
         const savedAccessIds = reportAccessMap[report.id] || [];
@@ -292,6 +309,61 @@ const ReportsPage = () => {
         );
     };
 
+    const handleSelectReport = (reportId: number) => {
+        const newSelected = new Set(selectedReports);
+        if (newSelected.has(reportId)) {
+            newSelected.delete(reportId);
+        } else {
+            newSelected.add(reportId);
+        }
+        setSelectedReports(newSelected);
+    };
+
+
+    const handleShare = async () => {
+        if (selectedReports.size === 0) {
+            toast.error("Please select at least one report to share.");
+            return;
+        }
+
+        setIsSharing(true);
+
+        try {
+            const payload = {
+                reportIds: Array.from(selectedReports)
+            };
+
+            const response = await ReportShare(payload);
+
+            if (response && response.data && response.data.success) {
+                setShareData({
+                    shareUrl: response.data.data.shareUrl,
+                    expiryDate: response.data.data.expiryDate,
+                    expiryTime: response.data.data.expiryTime
+                });
+                setIsShareModalOpen(true);
+                toast.success(response.data.message);
+            } else {
+                toast.error("Failed to create share link. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error creating share link:", error);
+            toast.error("Failed to create share link. Please try again.");
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
+
+    const handleAccess = (report: Report) => {
+        setModalType('access');
+        setCurrentReport(report);
+        const savedAccessIds = reportAccessMap[report.id] || [];
+        setSelectedIndependentIds(savedAccessIds);
+        setIsEditModalOpen(true);
+    };
+
+
     return (
         <MasterHome>
             <div className="min-h-[calc(100vh-140px)] bg-gray-50 p-6">
@@ -317,84 +389,172 @@ const ReportsPage = () => {
                     </p>
                 </div>
 
+                <div className="flex items-center space-x-4">
+                    <button
+                        onClick={handleShare}
+                        disabled={isSharing}
+                        className={`flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg transition-colors ${selectedReports.size > 0
+                            ? 'hover:bg-gray-50 text-gray-900'
+                            : 'text-gray-400 cursor-not-allowed'
+                            } ${isSharing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {isSharing ? (
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                        ) : (
+                            <Share2 size={16} />
+                        )}
+                        <span>
+                            Share {selectedReports.size > 0 ? `(${selectedReports.size})` : ''}
+                        </span>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            if (selectedReports.size > 0) {
+                                const firstReportId = Array.from(selectedReports)[0];
+                                const firstReport = reports.find((report) => report.id === firstReportId);
+                                if (firstReport) handleAccess(firstReport);
+                            } else {
+                                toast.error("Please select at least one report to access.");
+                            }
+                        }}
+                        disabled={selectedReports.size === 0} // Disable button if no reports are selected
+                        className={`flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg transition-colors ${selectedReports.size > 0
+                                ? 'hover:bg-gray-50 text-gray-900'
+                                : 'text-gray-400 cursor-not-allowed'
+                            }`}
+                    >
+                        Access
+                    </button>
+
+
+
+                    <button
+                        onClick={() => router.push('/myHfiles')}
+                        className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg transition-colors"
+                    >
+                        Add Report
+                    </button>
+
+                </div>
+
+
                 {/* Reports Grid */}
                 {reports.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-3">
                         {reports.map((report) => (
-                            <div key={report.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                                <div className="p-6">
-                                    {renderFilePreview(report)}
-                                    <div className="mb-4">
-                                        <h3 className="font-semibold text-gray-900 truncate text-lg">
+                            <div
+                                key={report.id}
+                                className={`bg-white rounded-lg shadow-sm border transition-all ${selectedReports.has(report.id)
+                                    ? 'border-blue-500 ring-2 ring-blue-200'
+                                    : 'border-gray-300 hover:shadow-md'
+                                    }`}
+                            >
+                                {/* Checkbox */}
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedReports.has(report.id)}
+                                        onChange={() => handleSelectReport(report.id)}
+                                        className="absolute top-3 left-3 w-5 h-5 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 z-10 shadow-sm"
+                                    />
+
+                                    {/* Report Preview */}
+                                    <div className="aspect-[4/3] bg-gray-100 rounded-t-lg border-b border-gray-200 flex items-center justify-center relative overflow-hidden">
+                                        {report.reportUrl ? (
+                                            report.reportUrl.toLowerCase().endsWith('.pdf') ? (
+                                                <img
+                                                    src="/vecteezy_pdf-png-icon-red-and-white-color-for_23234824.png"
+                                                    alt="PDF File"
+                                                    className="object-contain w-full h-full"
+                                                />
+                                            ) : (
+                                                <img
+                                                    src={report.reportUrl}
+                                                    alt="Report Preview"
+                                                    className="object-contain w-full h-full"
+                                                />
+                                            )
+                                        ) : (
+                                            <span className="text-gray-400">No Preview Available</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Report Metadata */}
+                                <div className="p-4">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <h3 className="font-semibold text-blue-800 mb-2 truncate text-lg flex-1">
                                             {report.reportName}
                                         </h3>
-                                        <p className="text-sm text-blue-600 font-medium">
-                                            {report.reportType}
-                                        </p>
+                                        <div className="relative dropdown-menu">
+                                            <button
+                                                onClick={() => toggleDropdown(report.id)}
+                                                className="p-2 rounded-full hover:bg-gray-100"
+                                            >
+                                                <MoreVertical className="w-5 h-5 text-gray-600" />
+                                            </button>
+                                            {openDropdownId === report.id && (
+                                                <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg z-50 border">
+                                                    <button
+                                                        onClick={() => {
+                                                            handleDelete(report);
+                                                            setOpenDropdownId(null);
+                                                        }}
+                                                        className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                    >
+                                                        <Trash2 size={14} /> Delete
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            handleWhatsAppShare(report);
+                                                            setOpenDropdownId(null);
+                                                        }}
+                                                        className="w-full px-4 py-2 text-sm text-left text-green-600 hover:bg-green-50 flex items-center gap-2"
+                                                    >
+                                                        <Share2 size={14} /> Share
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-2 mb-4">
-                                        <div className="text-sm text-gray-600">
-                                            <span className="font-medium">Size:</span> {formatFileSize(report.fileSize)}
+                                    <div className="border border-gray-300 mb-2"></div>
+
+                                    <div className="space-y-1 text-sm text-gray-600 mb-4">
+                                        <div>
+                                            <span className="font-medium">Report Type:</span> {report.reportType}
                                         </div>
-                                        <div className="text-sm text-gray-600">
-                                            <span className="font-medium">Type:</span> {report.userType}
+                                        <div>
+                                            <span className="font-medium">User Type:</span> {report.userType}
                                         </div>
-                                        <div className="text-sm text-gray-600">
+                                        <div>
                                             <span className="font-medium">Date:</span> {report.reportDate} {report.reportTime}
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-5 gap-2">
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => handleView(report)}
-                                            className="flex-1 flex items-center justify-center px-3 py-2 cursor-pointer primary text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                                            className="flex-1 primary text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                                         >
-                                            <Eye className="w-4 h-4 mr-1" />
                                             View
                                         </button>
+
                                         <button
                                             onClick={() => handleEdit(report)}
-                                            className="flex items-center justify-center px-2 py-2 text-yellow-500 cursor-pointer text-sm rounded-lg  transition-colors"
+                                            className="p-2 rounded-full hover:bg-yellow-100 transition-colors"
                                             title="Edit Report"
                                         >
-                                            <Edit className="w-4 h-4" />
+                                            <Edit className="text-yellow-600 w-4 h-4" />
                                         </button>
-                                        <button
-                                            onClick={() => handleDelete(report)}
-                                            disabled={isDeleting === report.id}
-                                            className={`flex items-center justify-center px-2 py-2 text-sm rounded-lg transition-colors ${isDeleting === report.id
-                                                ? 'text-gray-400 cursor-not-allowed'
-                                                : 'text-red-500 cursor-pointer hover:bg-red-50'
-                                                }`}
-                                            title="Delete Report"
-                                        >
-                                            {isDeleting === report.id ? (
-                                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                                            ) : (
-                                                <Trash2 className="w-4 h-4" />
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => handleWhatsAppShare(report)}
-                                            className="flex items-center justify-center px-2 py-2 text-green-500 cursor-pointer text-sm rounded-lg  transition-colors"
-                                            title="Share on WhatsApp"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="w-4 h-4"
-                                                fill="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path d="M20.52 3.48A11.91 11.91 0 0012 0C5.37 0 0 5.37 0 12a11.9 11.9 0 001.7 6.1L0 24l6.3-1.66A11.94 11.94 0 0012 24c6.63 0 12-5.37 12-12a11.91 11.91 0 00-3.48-8.52zM12 22a9.93 9.93 0 01-5.27-1.52l-.38-.23-3.74.99 1-3.64-.24-.38A9.95 9.95 0 012 12c0-5.52 4.48-10 10-10s10 4.48 10 10-4.48 10-10 10zm5.19-7.56c-.28-.14-1.65-.81-1.9-.9s-.44-.14-.63.14-.72.9-.89 1.08-.33.21-.61.07a8.3 8.3 0 01-2.45-1.5 9.27 9.27 0 01-1.71-2.12c-.18-.3 0-.46.13-.6.13-.13.3-.33.45-.49.15-.17.2-.28.3-.47s.05-.35-.03-.49c-.08-.14-.63-1.51-.87-2.07-.23-.55-.47-.48-.64-.49h-.54c-.17 0-.45.07-.69.35s-.91.89-.91 2.16.93 2.5 1.06 2.67c.13.17 1.84 2.81 4.46 3.94 1.67.72 2.32.79 3.15.67.51-.08 1.65-.68 1.88-1.34s.23-1.23.16-1.34c-.06-.1-.26-.17-.54-.3z" />
-                                            </svg>
-                                        </button>
-
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
+
                 ) : (
                     <div className="text-center py-12">
                         <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -420,14 +580,15 @@ const ReportsPage = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
                     <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
                         <h2 className="text-xl font-semibold mb-4 text-center">Edit Report Name</h2>
-
-                        <input
-                            type="text"
-                            value={editedReportName}
-                            onChange={(e) => setEditedReportName(e.target.value)}
-                            className="w-full border border-gray-300 rounded-md p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter new report name"
-                        />
+                        {modalType === "edit" &&
+                            <input
+                                type="text"
+                                value={editedReportName}
+                                onChange={(e) => setEditedReportName(e.target.value)}
+                                className="w-full border border-gray-300 rounded-md p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter new report name"
+                            />
+                        }
 
                         <div>
                             {independent?.length > 0 && (

@@ -164,7 +164,10 @@ const MasterHeader = () => {
                 <li className="hover:bg-gray-200 transition-colors">
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); navigateTo('/membership-card'); }}
+                   onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/MembershipCard');
+                        }}
                     className="text-[#0331B5] p-2.5 flex items-center gap-2.5 text-sm border-b border-gray-200 cursor-pointer"
                   >
                     <i className="fa fa-id-card text-lg w-5"></i>
@@ -174,7 +177,10 @@ const MasterHeader = () => {
                 <li className="hover:bg-gray-200 transition-colors">
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); navigateTo('/subscription-plans'); }}
+                     onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/SubscriptionPlan');
+                        }}
                     className="text-[#0331B5] p-2.5 flex items-center gap-2.5 text-sm border-b border-gray-200 cursor-pointer"
                   >
                     <i className="fa fa-credit-card text-lg w-5"></i>
@@ -208,7 +214,10 @@ const MasterHeader = () => {
             <li className="hover:bg-gray-50 transition-colors">
               <a
                 href="#"
-                onClick={(e) => { e.preventDefault(); navigateTo('/manage-members'); }}
+                onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/myMembers');
+                        }}
                 className="text-[#0331B5] p-4 flex items-center gap-2.5 text-base border-b border-gray-200 cursor-pointer"
               >
                 <i className="fa fa-user text-xl w-5"></i>
