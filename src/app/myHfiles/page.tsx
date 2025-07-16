@@ -116,6 +116,16 @@ const MedicalDashboard = () => {
         router.push(`/allReports`);
     };
 
+       const handleFolderClick = () => {
+        const currentUserId = selectedUserId || userIdFromStorage;
+        if (!currentUserId) {
+            toast.error("Please select a user first.");
+            return;
+        }
+
+        router.push(`/folders`);
+    };
+
 
     useEffect(() => {
         ListMember();
@@ -416,6 +426,10 @@ const MedicalDashboard = () => {
                         {/* All Reports Card */}
                         <div className="bg-yellow-200 border cursor-pointer p-4 rounded-lg text-center shadow" onClick={handleAllReportsClick}>
                             <h3 className="font-semibold text-gray-800 text-lg">All Reports</h3>
+                        </div>
+
+                        <div className="bg-yellow-200 border cursor-pointer p-4 rounded-lg text-center shadow" onClick={handleFolderClick}>
+                            <h3 className="font-semibold text-gray-800 text-lg">Manage Folder </h3>
                         </div>
                     </div>
 

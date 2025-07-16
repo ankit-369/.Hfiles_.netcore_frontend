@@ -1,11 +1,13 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import MasterHome from '../components/MasterHome';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { faCircleCheck } from '@fortawesome/free-regular-svg-icons';
+import { CreateData, QuerySubmit, Verify } from '../services/HfilesServiceApi';
+import { decryptData } from '../utils/webCrypto';
+import { toast, ToastContainer } from 'react-toastify';
 
 // Type definitions
 interface RazorpayResponse {
@@ -40,6 +42,20 @@ interface RazorpayOptions {
   };
 }
 
+interface CreateOrderPayload {
+  userId: number;
+  amount: number;
+  planName: string;
+}
+
+interface VerifyPaymentPayload {
+  userId: number;
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planName: string;
+}
+
 declare global {
   interface Window {
     Razorpay: {
@@ -57,14 +73,49 @@ const SubscriptionCards: React.FC = () => {
     standard: false,
     premium: false
   });
-  const [formData, setFormData] = useState<{
-    email: string;
-    query: string;
-  }>({
+
+  const [formData, setFormData] = useState({
     email: '',
-    query: ''
+    query: '',
   });
 
+  const handleQuerySubmit = async () => {
+  const email = formData.email.trim();
+  const query = formData.query.trim();
+
+  if (!email || !query) {
+    toast.error('Please fill out all required fields');
+    return;
+  }
+
+  const payload = {
+    email,
+    queryText: query,
+  };
+
+  try {
+    const response = await QuerySubmit(payload);
+    toast.success(response.data.message );
+    setFormData({ email: '', query: '' });
+    setIsModalOpen(false);
+  } catch (error: any) {
+    console.error("Error response:", error.response?.data);
+  }
+};
+
+
+
+  const getUserId = async (): Promise<number> => {
+    try {
+      const encryptedUserId = localStorage.getItem("userId");
+      if (!encryptedUserId) return 0;
+      const userIdStr = await decryptData(encryptedUserId);
+      return parseInt(userIdStr, 10);
+    } catch (error) {
+      console.error("Error getting userId:", error);
+      return 0;
+    }
+  };
   // Load Razorpay script
   useEffect(() => {
     const script = document.createElement('script');
@@ -85,33 +136,31 @@ const SubscriptionCards: React.FC = () => {
       alert('Razorpay SDK not loaded. Please try again.');
       return;
     }
+    const currentUserId = await getUserId();
+    if (!currentUserId) {
+      toast.error("Please log in to view members.");
+      return;
+    }
 
     setLoading(prev => ({ ...prev, standard: true }));
 
     try {
-      // Create order on backend
-      const orderResponse = await fetch('/api/payment/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: 9900, // Rs. 99 in paise
-          currency: 'INR',
-          plan: 'Standard'
-        }),
-      });
-
-      const orderData = await orderResponse.json();
-
-      if (!orderResponse.ok) {
-        throw new Error(orderData.message || 'Failed to create order');
+      // Create order payload
+      const createOrderPayload: CreateOrderPayload = {
+        userId: currentUserId,
+        amount: 99,
+        planName: 'Standard'
+      };
+      // Call your CreateData API
+      const orderResponse = await CreateData(createOrderPayload);
+      if (!orderResponse.data || !orderResponse.data.orderId) {
+        throw new Error('Failed to create order');
       }
-
+      const orderData = orderResponse.data;
       // Razorpay options
       const options: RazorpayOptions = {
         key: "rzp_live_kpCWRpxOkiH9M7",
-        amount: orderData.amount,
+        amount: createOrderPayload.amount,
         currency: "INR",
         name: "Hfiles",
         description: "Standard Plan Subscription",
@@ -131,12 +180,10 @@ const SubscriptionCards: React.FC = () => {
           image_padding: false
         },
         handler: async function (response: RazorpayResponse) {
-          console.log("Payment successful:", response);
-          await handlePaymentSuccess(response, 'Standard');
+          await handlePaymentSuccess(response, 'Standard', orderData.orderId);
         },
         modal: {
           ondismiss: function () {
-            console.log("Payment popup closed");
             setLoading(prev => ({ ...prev, standard: false }));
           },
           escape: true,
@@ -149,7 +196,7 @@ const SubscriptionCards: React.FC = () => {
 
     } catch (error) {
       console.error('Standard payment initiation failed:', error);
-      alert('Failed to initiate payment. Please try again.');
+      toast.error('Failed to initiate payment. Please try again.');
       setLoading(prev => ({ ...prev, standard: false }));
     }
   };
@@ -157,36 +204,37 @@ const SubscriptionCards: React.FC = () => {
   // Premium Plan Payment Handler
   const handlePremiumPayment = async (): Promise<void> => {
     if (!window.Razorpay) {
-      alert('Razorpay SDK not loaded. Please try again.');
+      toast.error('Razorpay SDK not loaded. Please try again.');
+      return;
+    }
+    const currentUserId = await getUserId();
+    if (!currentUserId) {
+      toast.error("Please log in to view members.");
       return;
     }
 
     setLoading(prev => ({ ...prev, premium: true }));
 
     try {
-      // Create order on backend
-      const orderResponse = await fetch('/api/payment/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: 39900, // Rs. 399 in paise
-          currency: 'INR',
-          plan: 'Premium'
-        }),
-      });
+      // Create order payload
+      const createOrderPayload: CreateOrderPayload = {
+        userId: currentUserId,
+        amount: 399, // Rs. 399 in paise
+        planName: 'Premium'
+      };
+      // Call your CreateData API
+      const orderResponse = await CreateData(createOrderPayload);
 
-      const orderData = await orderResponse.json();
-
-      if (!orderResponse.ok) {
-        throw new Error(orderData.message || 'Failed to create order');
+      if (!orderResponse.data || !orderResponse.data.orderId) {
+        throw new Error('Failed to create order');
       }
+
+      const orderData = orderResponse.data;
 
       // Razorpay options
       const options: RazorpayOptions = {
         key: "rzp_live_kpCWRpxOkiH9M7",
-        amount: orderData.amount,
+        amount: createOrderPayload.amount,
         currency: "INR",
         name: "Hfiles",
         description: "Premium Plan Subscription",
@@ -206,63 +254,56 @@ const SubscriptionCards: React.FC = () => {
           image_padding: false
         },
         handler: async function (response: RazorpayResponse) {
-          console.log("Payment successful:", response);
-          await handlePaymentSuccess(response, 'Premium');
+          await handlePaymentSuccess(response, 'Premium', orderData.orderId);
         },
         modal: {
           ondismiss: function () {
-            console.log("Payment popup closed");
             setLoading(prev => ({ ...prev, premium: false }));
           },
           escape: true,
           backdropclose: false
         }
       };
-
       const rzp = new window.Razorpay(options);
       rzp.open();
-
     } catch (error) {
       console.error('Premium payment initiation failed:', error);
-      alert('Failed to initiate payment. Please try again.');
+      toast.error('Failed to initiate payment. Please try again.');
       setLoading(prev => ({ ...prev, premium: false }));
     }
   };
 
   // Handle payment success
-  const handlePaymentSuccess = async (response: RazorpayResponse, plan: string): Promise<void> => {
+  const handlePaymentSuccess = async (
+    response: RazorpayResponse,
+    plan: string,
+    orderId: string
+  ): Promise<void> => {
     try {
       setLoading(prev => ({
         ...prev,
         [plan.toLowerCase()]: true
       }));
 
-      // Send to your charge endpoint
-      const chargeResponse = await fetch('/api/payment/charge', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_order_id: response.razorpay_order_id,
-          razorpay_signature: response.razorpay_signature,
-          plan: plan
-        }),
-      });
-
-      const chargeData = await chargeResponse.json();
-
-      if (chargeResponse.ok && chargeData.success) {
-        alert(`✅ ${plan} subscription activated successfully!`);
-        window.location.href = '/subscription/success';
-      } else {
-        throw new Error(chargeData.message || 'Payment verification failed');
+      const currentUserId = await getUserId();
+      if (!currentUserId) {
+        toast.error("Please log in to view members.");
+        return;
       }
-
+      // Create verify payment payload
+      const verifyPayload: VerifyPaymentPayload = {
+        userId: currentUserId,
+        orderId: orderId,
+        paymentId: response.razorpay_payment_id,
+        signature: response.razorpay_signature,
+        planName: plan
+      };
+      const verifyResponse = await Verify(verifyPayload);
+      toast.success('Payment is successfully Done...')
+      window.location.href = '/SubscriptionPlan';
     } catch (error) {
       console.error('Payment verification failed:', error);
-      alert('❌ Payment verification failed. Please contact support.');
+      toast.success('Payment verification failed')
     } finally {
       setLoading(prev => ({
         ...prev,
@@ -334,7 +375,7 @@ const SubscriptionCards: React.FC = () => {
                   <FontAwesomeIcon icon={faCircleCheck} className=" w-5 h-5 mr-3" />
                   <span className="line-through text-black">Membership card</span>
                 </div>
-              </div> 
+              </div>
             </div>
 
             {/* Standard Plan */}
@@ -378,7 +419,7 @@ const SubscriptionCards: React.FC = () => {
               <button
                 onClick={handleStandardPayment}
                 disabled={loading.standard}
-                className="w-full bg-blue-800 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+                className="w-full bg-blue-800 hover:bg-blue-700 cursor-pointer disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
               >
                 {loading.standard ? 'Processing...' : 'Go Standard'}
               </button>
@@ -425,7 +466,7 @@ const SubscriptionCards: React.FC = () => {
               <button
                 onClick={handlePremiumPayment}
                 disabled={loading.premium}
-                className="w-full bg-blue-800 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
+                className="w-full bg-blue-800 hover:bg-blue-700 cursor-pointer disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
               >
                 {loading.premium ? 'Processing...' : 'Go Premium'}
               </button>
@@ -466,7 +507,7 @@ const SubscriptionCards: React.FC = () => {
 
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="w-full bg-blue-800 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 mt-10"
+                className="w-full bg-blue-800 cursor-pointer hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 mt-10"
               >
                 Contact Sales
               </button>
@@ -508,11 +549,15 @@ const SubscriptionCards: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, query: e.target.value })}
                     placeholder="Tell us how we can help"
                     rows={4}
+                    maxLength={20} 
                     className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
-                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors border-none">
+                <button
+                  onClick={handleQuerySubmit}
+                  className="primary text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors border-none"
+                >
                   Submit
                 </button>
               </div>
@@ -520,6 +565,7 @@ const SubscriptionCards: React.FC = () => {
           </div>
         )}
       </div>
+      <ToastContainer />
     </MasterHome>
   );
 };

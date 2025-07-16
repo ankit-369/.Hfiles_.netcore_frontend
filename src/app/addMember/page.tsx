@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { User } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useRouter } from 'next/navigation';
@@ -74,7 +74,6 @@ const Page = () => {
         ListCountry();
     }, []);
 
-
     const formatDate = (dob: string | Date): string => {
         const dateObj = new Date(dob);
         const day = String(dateObj.getDate()).padStart(2, '0');
@@ -131,32 +130,113 @@ const Page = () => {
         formik.setFieldValue('phoneNumber', value);
     };
 
+    const handleBack = () => {
+        router.push('/myHfiles');
+    };
+
     return (
         <MasterHome>
-            <div className="p-6">
-                {/* Tab Headers */}
-                <div className="flex space-x-4 border-b mb-6">
-                    <button
-                        className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'add' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+            <div className="p-2 sm:p-4 lg:p-6 max-w-7xl mx-auto">
+                {/* Header Section */}
+                <div className="mb-4 sm:mb-6">
+                    {/* Mobile Layout - Stacked */}
+                    <div className="block sm:hidden">
+                        <button
+                            onClick={handleBack}
+                            className="flex items-center text-gray-600 hover:text-gray-800 transition-colors mb-4"
+                        >
+                            <ArrowLeft size={20} className="mr-2" />
+                            <span className="text-sm font-medium">Back</span>
+                        </button>
+                        <div className="text-center">
+                            <h1 className="text-xl sm:text-2xl font-bold text-blue-800">Add Members</h1>
+                        </div>
+                    </div>
+
+                    {/* Desktop Layout - Side by side */}
+                    <div className="hidden sm:block">
+                        <div className="flex items-center justify-between">
+                            <button
+                                onClick={handleBack}
+                                className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+                            >
+                                <ArrowLeft size={20} className="mr-2" />
+                                <span className="text-sm font-medium">Back</span>
+                            </button>
+                            
+                            <div className="text-center flex-1">
+                                <h1 className="text-2xl lg:text-3xl font-bold text-blue-800">Add Members</h1>
+                            </div>
+                            
+                            {/* Spacer to center the title */}
+                            <div className="w-16"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border border-black mb-4 sm:mb-6"></div>
+
+                {/* Tab Buttons */}
+                <div className="mb-4 sm:mb-6">
+                    {/* Mobile Layout - Full width stacked buttons */}
+                    <div className="flex flex-col gap-3 sm:hidden">
+                        <button
+                            className={`w-full px-4 py-3 rounded-full font-medium transition-all duration-200 border-2 ${
+                                activeTab === 'add' 
+                                    ? 'bg-yellow-200 border-black text-gray-800 shadow-md' 
+                                    : 'bg-white border-black text-gray-700 hover:border-gray-400 hover:shadow-sm'
                             }`}
-                        onClick={() => setActiveTab('add')}
-                    >
-                        Add Member
-                    </button>
-                    <button
-                        className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'existing' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+                            onClick={() => setActiveTab('add')}
+                        >
+                            Add New Member
+                        </button>
+                        <button
+                            className={`w-full px-4 py-3 rounded-full font-medium transition-all duration-200 border-2 ${
+                                activeTab === 'existing' 
+                                    ? 'bg-yellow-200 border-black text-gray-800 shadow-md' 
+                                    : 'bg-white border-black text-gray-700 hover:border-gray-400 hover:shadow-sm'
                             }`}
-                        onClick={() => setActiveTab('existing')}
-                    >
-                        Existing Member
-                    </button>
+                            onClick={() => setActiveTab('existing')}
+                        >   
+                            Add Existing Member
+                        </button>
+                    </div>
+
+                    {/* Tablet Layout - Centered side by side */}
+                    <div className="hidden sm:flex sm:justify-center md:justify-center lg:justify-end lg:mr-30 xl:mr-30 gap-4">
+                        <button
+                            className={`px-6 lg:px-8 py-3 rounded-full font-medium transition-all duration-200 border-2 whitespace-nowrap ${
+                                activeTab === 'add' 
+                                    ? 'bg-yellow-200 border-black text-gray-800 shadow-md' 
+                                    : 'bg-white border-black text-gray-700 hover:border-gray-400 hover:shadow-sm'
+                            }`}
+                            onClick={() => setActiveTab('add')}
+                        >
+                            Add New Member
+                        </button>
+                        <button
+                            className={`px-6 lg:px-8 py-3 rounded-full font-medium transition-all duration-200 border-2 whitespace-nowrap ${
+                                activeTab === 'existing' 
+                                    ? 'bg-yellow-200 border-black text-gray-800 shadow-md' 
+                                    : 'bg-white border-black text-gray-700 hover:border-gray-400 hover:shadow-sm'
+                            }`}
+                            onClick={() => setActiveTab('existing')}
+                        >   
+                            Add Existing Member
+                        </button>
+                    </div>
                 </div>
 
                 {/* Tab Content */}
-                <div>
+                <div className="w-full">
                     {activeTab === 'add' && (
-                        <MemberAdded formik={formik} handleCountryCodeChange={handleCountryCodeChange} listCountyCode={listCountyCode} handlePhoneNumberChange={handlePhoneNumberChange}
-                            isSubmitting={isSubmitting} />
+                        <MemberAdded 
+                            formik={formik} 
+                            handleCountryCodeChange={handleCountryCodeChange} 
+                            listCountyCode={listCountyCode} 
+                            handlePhoneNumberChange={handlePhoneNumberChange}
+                            isSubmitting={isSubmitting} 
+                        />
                     )}
 
                     {activeTab === 'existing' && (
@@ -164,7 +244,10 @@ const Page = () => {
                     )}
                 </div>
 
-                <ToastContainer />
+                <ToastContainer 
+                    position="top-right"
+                    className="mt-16 sm:mt-0"
+                />
             </div>
         </MasterHome>
     )

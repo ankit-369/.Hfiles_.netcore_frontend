@@ -74,7 +74,7 @@ const otpValidationSchema = Yup.object({
 
 const AddBasicDetails: React.FC = () => {
   const router = useRouter();
-  const [profileImage, setProfileImage] = useState<string>('/96d6a80ddef94d5b7c78919843c68d25900f7981.png');
+  const [profileImage, setProfileImage] = useState<string>('');
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [imageLoading, setImageLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -620,9 +620,7 @@ const AddBasicDetails: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    ListCountry();
-  }, []);
+ 
 
   useEffect(() => {
     if (listCountyCode.length > 0 && listDetails) {
@@ -1115,25 +1113,37 @@ const AddBasicDetails: React.FC = () => {
   return (
     <MasterHome>
       <div className="h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-134px)] 2xl:h-[calc(100vh-120x)] bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
-        <div className="flex justify-between items-center p-4 sm:p-5">
+        <div className="flex justify-between items-center  mx-3">
           <button
             onClick={() => router.push('/dashboard')}
             className="text-gray-600 hover:text-gray-800 font-medium text-sm sm:text-base transition-colors duration-200"
           >
-            Back to Home
+            Back 
           </button>
         </div>
 
-        {!isEmailVerified && !userEmail?.isEmailVerified && (
-          <div
-            className='bg-red-300 mb-3 text-center cursor-pointer hover:bg-red-400 transition-colors duration-200 py-2 mx-4 sm:mx-6'
-            onClick={handleEmailVerificationClick}
-          >
-            <p className="text-red-800 font-medium text-sm sm:text-base">
-              {otpLoading ? 'Sending OTP...' : 'Please Verify Email - Click Here'}
-            </p>
-          </div>
-        )}
+    {!isEmailVerified && !userEmail?.isEmailVerified && (
+  <div className="w-full flex justify-end">
+    <div className="w-full sm:w-1/2 bg-red-700 text-white flex flex-col sm:flex-row justify-between items-center p-4 rounded-md mx-4 sm:mx-0 mb-4 shadow-md">
+      {/* Message */}
+      <div className="text-center sm:text-left mb-2 sm:mb-0">
+        <p className="font-semibold text-sm sm:text-base">Your email isn’t verified yet.</p>
+        <p className="text-sm sm:text-base">Please verify to access all features.</p>
+      </div>
+
+      {/* Button */}
+      <button
+        onClick={handleEmailVerificationClick}
+        disabled={otpLoading}
+        className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded-md text-sm sm:text-base mt-2 sm:mt-0 sm:ml-4 transition-colors duration-200"
+      >
+        {otpLoading ? 'Sending OTP...' : 'Verify Now'}
+      </button>
+    </div>
+  </div>
+)}
+
+
 
         {!isPhoneVerified && (
           <div

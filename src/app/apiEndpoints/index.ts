@@ -15,70 +15,91 @@ export const endpoints = {
       abhacarddownload: API_Lab_Reports + "abha/download-card",
    },
 
-   SIGN_UP :{
-      SignUpOTP : API_NEW_Data + "signup/otp",
-      SignUpData : API_NEW_Data + "signup",
+   SIGN_UP: {
+      SignUpOTP: API_NEW_Data + "signup/otp",
+      SignUpData: API_NEW_Data + "signup",
    },
 
-   LOGIN :{
-      LoginWithPassword : API_NEW_Data + "login/password",
-      LoginOTP : API_NEW_Data + "login/otp",
-      LoginWithOtp : API_NEW_Data + "login"
+   LOGIN: {
+      LoginWithPassword: API_NEW_Data + "login/password",
+      LoginOTP: API_NEW_Data + "login/otp",
+      LoginWithOtp: API_NEW_Data + "login"
    },
 
-   COUNTRY_LIST : {
+   COUNTRY_LIST: {
       ListCountyCode: API_NEW_Data + "country/dialing-codes"
    },
 
-   PROFILE_DETAILS : {
-    List_Details : API_NEW_Data + "profile",
-    FLAG : (userId:number) => `${API_NEW_Data}profile/${userId}/flag`,
-    SEND_OTP: API_NEW_Data + "profile/email/send-otp",
-    VERIFY_OTP : API_NEW_Data + "profile/email/verify-otp",
-    PINCODE : API_NEW_Data + "pincode",
-    UPDATE_PROFILE : API_NEW_Data + "profile"
+   PROFILE_DETAILS: {
+      List_Details: API_NEW_Data + "profile",
+      FLAG: (userId: number) => `${API_NEW_Data}profile/${userId}/flag`,
+      SEND_OTP: API_NEW_Data + "profile/email/send-otp",
+      VERIFY_OTP: API_NEW_Data + "profile/email/verify-otp",
+      PINCODE: API_NEW_Data + "pincode",
+      UPDATE_PROFILE: API_NEW_Data + "profile"
    },
 
-   ADD_MEMEBER : {
-      AddMember : API_NEW_Data + "members/add",
-      ExistingMember : API_NEW_Data + "members/existing",
-      List_Member : API_NEW_Data + "members",
-      VerifyPhoneOTp : API_NEW_Data + "profile/phone/send-otp",
-      SubmitOtpVerify : API_NEW_Data + "profile/phone/verify-otp"
+   ADD_MEMEBER: {
+      AddMember: API_NEW_Data + "members/add",
+      ExistingMember: API_NEW_Data + "members/existing",
+      List_Member: API_NEW_Data + "members",
+      VerifyPhoneOTp: API_NEW_Data + "profile/phone/send-otp",
+      SubmitOtpVerify: API_NEW_Data + "profile/phone/verify-otp"
 
    },
 
-   VERIFYMEMBER : {
+   VERIFYMEMBER: {
       IniteMember: API_NEW_Data + "members/invite/send-otp",
       InviteOTP: API_NEW_Data + "members/invite/verify-otp",
       InviteSetPassword: API_NEW_Data + "members/invite/set-password"
    },
 
-   HFID :{
-          ListHfid : (userId:number) => `${API_NEW_Data}users/${userId}/hfid`,
+   HFID: {
+      ListHfid: (userId: number) => `${API_NEW_Data}users/${userId}/hfid`,
    },
 
-   REPORTADDED : {
-      AddReports : (userId:number) => `${API_NEW_Data}user/${userId}/reports/upload`,
-      ShowReports : API_NEW_Data + "user/reports",
-      DeleteReport : (reportId:number) => `${API_NEW_Data}report/${reportId}/delete`,
-      ShareReport : API_NEW_Data + "reports/share",
-      EditReport : (reportId:number) => `${API_NEW_Data}report/${reportId}/edit`
+   REPORTADDED: {
+      AddReports: (userId: number) => `${API_NEW_Data}user/${userId}/reports/upload`,
+      ShowReports: API_NEW_Data + "user/reports",
+      DeleteReport: (reportId: number) => `${API_NEW_Data}report/${reportId}/delete`,
+      ShareReport: API_NEW_Data + "reports/share",
+      EditReport: (reportId: number) => `${API_NEW_Data}report/${reportId}/edit`
    },
 
-   MEDICALHISTORY :{
-      MedicalList : API_NEW_Data + "surgery/user",
-      AddMedical : (userId:number) => `${API_NEW_Data}surgery/${userId}/add`,
-      EditMedical : API_NEW_Data + "surgery",
-      DeleteMedical : API_NEW_Data + "surgery"
+   MEDICALHISTORY: {
+      MedicalList: API_NEW_Data + "surgery/user",
+      AddMedical: (userId: number) => `${API_NEW_Data}surgery/${userId}/add`,
+      EditMedical: API_NEW_Data + "surgery",
+      DeleteMedical: API_NEW_Data + "surgery",
+      AllDataList: (userId: number) => `${API_NEW_Data}user/${userId}/medical/history`,
+      AddMetrix: (userId: number) => `${API_NEW_Data}user/${userId}/metrics`,
+      AddSocial: (userId: number) => `${API_NEW_Data}social/history/${userId}/update`,
+      AdddynamicAllergies: (userId: number) => `${API_NEW_Data}user/${userId}/allergy/dynamic`,
+      AddStaticAllergies: (userId: number) => `${API_NEW_Data}user/${userId}/allergy/update`,
+      AdddynamicDesease: (userId: number) => `${API_NEW_Data}user/${userId}/disease/dynamic/type`,
+      DiseaseUpdate: (userId: number) => `${API_NEW_Data}user/${userId}/disease/update`,
+      PDFGet: (userId: number) => `${API_NEW_Data}user/${userId}/medical/share-pdf`
    },
 
-     REQUESTS: {
-  ListRequests: (userId: number) => `${API_NEW_Data}member/${userId}/requests`,
-   RESPOND_REQUEST : API_NEW_Data + "requests/respond",
+   REQUESTS: {
+      ListRequests: (userId: number) => `${API_NEW_Data}member/${userId}/requests`,
+      RESPOND_REQUEST: API_NEW_Data + "requests/respond",
       DeleteMember: (id: number) => `${API_NEW_Data}members/${id}/delete`,
       EditMember: (id: number) => `${API_NEW_Data}members/${id}/edit`,
-}
+   },
+
+   SUBSCRIPATION: {
+      Create_Order: API_NEW_Data + "Subscription/create-order",
+      Verify_Payment: API_NEW_Data + "Subscription/payment-verification",
+      Submit_Query : API_NEW_Data + "Subscription/submit-query"
+   },
+
+   FOLDER : {
+      CreateFolder : API_NEW_Data + "folder",
+      ListFolder :API_NEW_Data + "user",
+      EditFolder : API_NEW_Data + "folder",
+      DeleteFolder : API_NEW_Data + "folder",
+   }
 
 }
 
