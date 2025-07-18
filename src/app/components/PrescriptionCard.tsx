@@ -1,16 +1,15 @@
-import { faCheck, faPlus, faShareAlt } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import {  Trash2 } from 'lucide-react';
 
 interface Props {
     cardNumber: number;
     prescription: {
-        member: string;
+        memberId: string;
         condition: string;
-        medication: string;
+        otherCondition: string;
+        medicine: string;
         dosage: string;
         schedule: string;
-        timing: string;
+        timings: string;
     };
     isSelected: boolean;
     showCheckbox: boolean;
@@ -26,13 +25,22 @@ const PrescriptionCard: React.FC<Props> = ({
     onEdit,
     onSelectChange
 }) => {
+    const transformedPrescription = {
+        member: `${prescription.memberId}`, 
+        condition: prescription.condition === 'Others' ? prescription.otherCondition : prescription.condition,
+        medication: prescription.medicine,
+        dosage: prescription.dosage,
+        schedule: prescription.schedule.split(',').join(', '), 
+        timing: prescription.timings
+    };
+
     const rows = [
-        ['Member', prescription.member],
-        ['Condition', prescription.condition],
-        ['Medication', prescription.medication],
-        ['Dosage', prescription.dosage],
-        ['Schedule', prescription.schedule],
-        ['Timing', prescription.timing],
+        ['Member', transformedPrescription.member],
+        ['Condition', transformedPrescription.condition],
+        ['Medication', transformedPrescription.medication],
+        ['Dosage', transformedPrescription.dosage],
+        ['Schedule', transformedPrescription.schedule],
+        ['Timing', transformedPrescription.timing],
     ];
 
     return (
@@ -79,11 +87,10 @@ const PrescriptionCard: React.FC<Props> = ({
                     <div className="flex justify-center items-center gap-3">
                         <button
                             onClick={onEdit}
-                            className={`px-4 py-1 rounded-md text-black text-sm ${
-                                isSelected 
-                                    ? 'bg-green-600 border border-black' 
+                            className={`px-4 py-1 rounded-md text-black text-sm ${isSelected
+                                    ? 'bg-green-600 border border-black'
                                     : 'bg-blue-200 border border-black'
-                            } hover:opacity-90 transition-opacity`}
+                                } hover:opacity-90 transition-opacity`}
                         >
                             Edit
                         </button>

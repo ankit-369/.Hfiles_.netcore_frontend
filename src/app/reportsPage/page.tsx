@@ -6,6 +6,7 @@ import MasterHome from '../components/MasterHome';
 import { ListReport, DeleteReport, MemberList, ReportEdit, ReportShare } from '../services/HfilesServiceApi';
 import { toast, ToastContainer } from 'react-toastify';
 import { decryptData } from '../utils/webCrypto';
+import VaccinationList from '../components/VaccinationList';
 
 type Report = {
     userName(userName: any): unknown;
@@ -266,7 +267,6 @@ const ReportsPage = () => {
 
         } catch (error) {
             console.error("Error updating report:", error);
-            toast.error("Failed to update report. Please try again.");
         }
     };
     const getUserId = async (): Promise<number> => {
@@ -348,7 +348,6 @@ const ReportsPage = () => {
             }
         } catch (error) {
             console.error("Error creating share link:", error);
-            toast.error("Failed to create share link. Please try again.");
         } finally {
             setIsSharing(false);
         }
@@ -366,21 +365,21 @@ const ReportsPage = () => {
 
     return (
         <MasterHome>
-            <div className="min-h-[calc(100vh-140px)] bg-gray-50 p-6">
+            <div className="min-h-[calc(100vh-140px)] bg-gray-50 p-2">
                 {/* Header */}
                 <div className="mb-6 ">
                     <div className="flex items-center mb-4">
                         <button
                             onClick={() => router.push('/myHfiles')}
-                            className="flex items-center text-blue-600 cursor-pointer hover:text-blue-800 transition-colors"
+                            className="flex items-center text-black cursor-pointer hover:text-blue-800 transition-colors"
                         >
                             <ArrowLeft className="w-5 h-5 mr-2" />
-                            Back to Report
+                            Back
                         </button>
                     </div>
                     <h1 className="text-2xl flex justify-center font-bold">
                         <span className="text-blue-800">{userNames}'s&nbsp;</span>
-                        <span className="text-black">Reports</span>
+                        <span className="text-gray-500">{reportType} Reports</span>
                     </h1>
 
                     <div className='border mt-2 mx-auto w-30'></div>
@@ -420,15 +419,12 @@ const ReportsPage = () => {
                         }}
                         disabled={selectedReports.size === 0} // Disable button if no reports are selected
                         className={`flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg transition-colors ${selectedReports.size > 0
-                                ? 'hover:bg-gray-50 text-gray-900'
-                                : 'text-gray-400 cursor-not-allowed'
+                            ? 'hover:bg-gray-50 text-gray-900'
+                            : 'text-gray-400 cursor-not-allowed'
                             }`}
                     >
                         Access
                     </button>
-
-
-
                     <button
                         onClick={() => router.push('/myHfiles')}
                         className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg transition-colors"
@@ -437,6 +433,11 @@ const ReportsPage = () => {
                     </button>
 
                 </div>
+                {reportType === 'IMMUNIZATION' &&
+                    <div>
+                        <VaccinationList />
+                    </div>
+                }
 
 
                 {/* Reports Grid */}

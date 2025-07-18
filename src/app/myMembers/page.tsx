@@ -97,24 +97,6 @@ const MyMembers = () => {
         }
     };
 
-    const fetchRequestList = async () => {
-        try {
-            const encryptedUserId = localStorage.getItem('userId');
-            if (!encryptedUserId) return;
-            const userIdStr = await decryptData(encryptedUserId);
-            const userId = parseInt(userIdStr, 10);
-            const response = await GetRequestList(userId);
-            if (response?.data?.success) {
-                setRequests(response.data.data);
-            } else {
-                toast.error('No requests found.');
-            }
-        } catch (error) {
-            console.error('Error fetching requests', error);
-            toast.error('Failed to load requests.');
-        }
-    };
-
     useEffect(() => {
         fetchMembers();
     }, []);
@@ -138,8 +120,6 @@ const MyMembers = () => {
     };
     useEffect(() => {
         fetchRequestsAndUpdateCount();
-        const intervalId = setInterval(fetchRequestsAndUpdateCount, 30000);
-        return () => clearInterval(intervalId);
     }, [activeTab]);
 
     const handleRequestResponse = async (
@@ -158,27 +138,21 @@ const MyMembers = () => {
             fetchRequestsAndUpdateCount();
         } catch (error: any) {
             console.error('API error:', error?.response?.data || error);
-            toast.error('Failed to respond to request.');
         }
     };
 
     const handleDelete = async (id: number, isIndependent: boolean) => {
         try {
             const response = await SoftDeleteMember(id);
-            if (response?.data?.success) {
-                toast.success('Member deleted successfully');
+                toast.success(`${response.data.message}`);
                 setMembers((prev) =>
                     prev.filter((member) => {
                         const compareId = isIndependent ? member.requestId : member.id;
                         return compareId !== id;
                     })
                 );
-            } else {
-                toast.error('Failed to delete member');
-            }
         } catch (error) {
             console.error('Soft delete error:', error);
-            toast.error('An error occurred while deleting the member');
         }
     };
 
@@ -223,11 +197,10 @@ const MyMembers = () => {
                 setPreviewImage(null);
                 fetchMembers();
             } else {
-                toast.error(response.data?.message || 'Update failed.');
+                toast.error(response.data?.message );
             }
         } catch (err: any) {
             console.error('Edit error:', err.response?.data || err);
-            toast.error('An error occurred while updating the member.');
         }
     };
 

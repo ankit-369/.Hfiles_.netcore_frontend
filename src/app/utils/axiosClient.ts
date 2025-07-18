@@ -44,13 +44,14 @@ axiosInstance.interceptors.response.use(
     document.body.classList.remove("loading-indicator");
 
     const status = error?.response?.status;
-    const message = error?.response?.data?.message || "Something went wrong";
+    const message = error?.response?.data?.Message ;
+    const message2 = error?.response?.data?.message ;
 
     if (status === 401) {
       toast.error(message);
       // window.location.href = "/";
     } else {
-      toast.error(message);
+      toast.error(message2);
     }
 
     return Promise.reject(error);

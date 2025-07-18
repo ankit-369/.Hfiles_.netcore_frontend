@@ -78,6 +78,10 @@ export const ListFlag = async (userId: number, countryCode: string) => {
   });
 };
 
+export const PlaneShift = async (userId:number) =>{
+  return axiosInstance.get(endpoints.PROFILE_DETAILS.SubscripationProfile(userId))
+}
+
 
 export const OTPSend = async (data: any) => {
   return axiosInstance.post(`${endpoints.PROFILE_DETAILS.SEND_OTP}`, data)
@@ -327,7 +331,7 @@ return axiosInstance.post(`${endpoints.FOLDER.CreateFolder}`, payload)
 }
 
 export const FolderList = async (userId:number) =>{
-return axiosInstance.get(`${endpoints.FOLDER.ListFolder}/${userId}`)
+return axiosInstance.get(`${endpoints.FOLDER.ListFolder(userId)}`)
 }
 
 export const FolderEdit = async (id: any, payload: { folderName: string }) => {
@@ -336,4 +340,64 @@ export const FolderEdit = async (id: any, payload: { folderName: string }) => {
 
 export const FolderDelete = async (id: any) => {
     return axiosInstance.delete(`${endpoints.FOLDER.EditFolder}/${id}`);
+}
+
+
+export const UploadeBatch = async (userId: number, folderId: number, formData: FormData) => {
+  return axiosInstance.post(
+    endpoints.FOLDER.UploadBatch(userId, folderId),
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  );
+};
+
+
+export const ListData = async (
+  userId: number,
+  folderId: number,
+  reportCategory?: number 
+) => {
+  const endpoint = endpoints.FOLDER.GetReports(userId, folderId);
+
+  const params = reportCategory !== undefined ? { reportCategory } : {};
+
+  return axiosInstance.get(endpoint, { params });
+};
+
+export const ReportDelete = async (userId:number , reportId:number) =>{
+  return axiosInstance.delete(endpoints.FOLDER.DeleteReport(userId,reportId))
+}
+
+export const Reportedit = async (userId: number, reportId: number, payload: { reportName: string, editDate: string }) => {
+  return axiosInstance.patch(endpoints.FOLDER.EditReport(userId, reportId), payload)
+}
+
+
+export const FolderAccess = async (userId:number, payload:any) =>{
+return axiosInstance.post(`${endpoints.FOLDER.AccessFolder}/${userId}`, payload)
+}
+
+// Forgot password 
+
+// api/auth.ts or similar
+export const SendOtpForgot = async (payload: { email: string }) => {
+  return axios.post(`${endpoints.FORGOT_PASSWORD.ForgotOtpSend}`, payload);
+};
+
+
+export const PasswordForgot = async (payload:any) => {
+  return axios.post(`${endpoints.FORGOT_PASSWORD.Password_forgot}`, payload);
+};
+
+export const PasswordChange = async (payload:any) => {
+  return axiosInstance.post(`${endpoints.FORGOT_PASSWORD.Change_Password}`, payload);
+};
+
+
+//Family Prescription 
+
+export const GetFmailyData = async (userId:number ) =>{
+  return axiosInstance.get(endpoints.FAMILYPRESCRIPATION.ListFamilyData(userId))
 }

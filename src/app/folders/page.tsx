@@ -7,18 +7,28 @@ import { useRouter } from "next/navigation";
 import Search from '../components/Search';
 import MasterHome from '../components/MasterHome';
 import { toast, ToastContainer } from 'react-toastify';
-import { FolderCreate, FolderList, FolderEdit, FolderDelete } from '../services/HfilesServiceApi';
+import { FolderCreate, FolderList, FolderEdit, FolderDelete, FolderAccess, MemberList } from '../services/HfilesServiceApi';
 import { decryptData } from '../utils/webCrypto';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit } from '@fortawesome/free-regular-svg-icons';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
-
 interface FolderData {
-    id: number;
-    folderName: string;
+    folderId: number;
+    name: string;
     createdEpoch: number;
     reportCount: number;
+    reportCounts: number;
+    accessToUserIds?: number[]; // Added this field
+    isOwner?: boolean;
+    updatedEpoch?: number;
+}
+
+interface Member {
+    id: number;
+    firstName: string;
+    lastName: string;
+    profileURL?: string;
 }
 
 interface FloatingActionButtonProps {
@@ -42,8 +52,14 @@ export default function Folders() {
     const [editingFolder, setEditingFolder] = useState<FolderData | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
-    const storedUserName = localStorage.getItem('userName') || '';
+    const [showAccessModal, setShowAccessModal] = useState(false);
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedFolderIds, setSelectedFolderIds] = useState<number[]>([]);
+    const [independent, setIndependent] = useState<Member[]>([]);
+    const [selectedIndependentIds, setSelectedIndependentIds] = useState<number[]>([]);
+    const storedUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '';
     const [folderDataList, setFolderDataList] = useState<FolderData[]>([]);
+    const [lastReportName, setLastReportName] = useState("");
 
     const getUserId = async (): Promise<number> => {
         try {
@@ -65,12 +81,47 @@ export default function Folders() {
                 return;
             }
             const response = await FolderList(currentUserId)
-            setFolderDataList(response.data.data)
-            console.log(response.data.data, "ghiihuigasid")
+            setFolderDataList(response?.data?.data)
+            if (response?.data?.data?.length > 0) {
+                const lastFolder = response.data.data[response.data.data.length - 1];
+                setLastReportName(lastFolder.folderName || "");
+            }
         } catch (error) {
             console.log(error)
         }
     }
+
+    const ListMember = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+            const response = await MemberList(currentUserId);
+            setIndependent(response?.data?.data?.independentMembers)
+        } catch (error) {
+            console.error("Error fetching members:", error);
+            toast.error("Failed to load members. Please try again.");
+        }
+    };
+
+    // Helper function to get existing access user IDs
+    const getExistingAccessUserIds = () => {
+        const accessUserIds = new Set<number>();
+        
+        // Get all users who have access to any of the selected folders
+        selectedFolderIds.forEach(folderId => {
+            const folder = folderDataList.find(f => f.folderId === folderId);
+            if (folder && folder.accessToUserIds) {
+                folder.accessToUserIds.forEach(userId => {
+                    accessUserIds.add(userId);
+                });
+            }
+        });
+        
+        return Array.from(accessUserIds);
+    };
 
     useEffect(() => {
         DataListFolder();
@@ -116,11 +167,48 @@ export default function Folders() {
         setShowDeleteConfirm(true);
     };
 
+    const handleAccessClick = () => {
+        if (!selectionMode) {
+            // Enable selection mode
+            setSelectionMode(true);
+            setSelectedFolderIds([]);
+        } else {
+            // Open access modal if folders are selected
+            if (selectedFolderIds.length === 0) {
+                toast.error("Please select at least one folder to grant access.");
+                return;
+            }
+            
+            // Pre-populate selectedIndependentIds with users who already have access
+            const existingAccessUserIds = getExistingAccessUserIds();
+            setSelectedIndependentIds(existingAccessUserIds);
+            
+            setShowAccessModal(true);
+            ListMember();
+        }
+    };
+
+    const handleFolderSelect = (folderId: number, isSelected: boolean) => {
+        if (isSelected) {
+            setSelectedFolderIds(prev => [...prev, folderId]);
+        } else {
+            setSelectedFolderIds(prev => prev.filter(id => id !== folderId));
+        }
+    };
+
+    const handleCheckboxChange = (memberId: number) => {
+        setSelectedIndependentIds(prev =>
+            prev.includes(memberId)
+                ? prev.filter(id => id !== memberId)
+                : [...prev, memberId]
+        );
+    };
+
     const confirmDelete = async () => {
         if (!folderToDelete) return;
 
         try {
-            const response = await FolderDelete(folderToDelete.id);
+            const response = await FolderDelete(folderToDelete.folderId);
             toast.success(response?.data?.message);
             DataListFolder();
         } catch (error: any) {
@@ -145,10 +233,49 @@ export default function Folders() {
         DataListFolder();
     };
 
+    const handleAccessSave = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to grant access.");
+                return;
+            }
+
+            const payload = {
+                folderIds: selectedFolderIds,
+                accessToUserIds: selectedIndependentIds,
+                revokeAccess: false
+            };
+
+            const response = await FolderAccess(currentUserId, payload);
+            toast.success(response?.data?.message);
+
+            // Reset states
+            setShowAccessModal(false);
+            setSelectionMode(false);
+            setSelectedFolderIds([]);
+            setSelectedIndependentIds([]);
+            
+            // Refresh folder data to get updated access info
+            DataListFolder();
+        } catch (error: any) {
+            console.error("Error granting access:", error);
+        }
+    };
+
+    const handleAccessCancel = () => {
+        setShowAccessModal(false);
+        setSelectedIndependentIds([]);
+    };
+
+    const cancelSelectionMode = () => {
+        setSelectionMode(false);
+        setSelectedFolderIds([]);
+    };
+
     return (
         <MasterHome>
             <div className='Main w-[95%] mx-auto sm:w-[90%]'>
-
                 <Search />
 
                 <div className=''>
@@ -159,7 +286,7 @@ export default function Folders() {
 
                     <div className="text-sm md:text-lg text-[#353935] flex items-center space-x-2 mt-1 sm:mt-3 md:justify-end lg:mr-3 md:mt-[-16px]">
                         <span className="font-semibold">Last updated:</span>
-                        <span>Thyroid Report</span>
+                        <span>{lastReportName}</span>
                     </div>
                 </div>
                 <hr className="mt-2 h-[1px] sm:h-[2px] bg-gray-400 border-none" />
@@ -175,11 +302,36 @@ export default function Folders() {
                         </button>
 
                         {/* Access Button */}
-                        <button className="flex items-center gap-3 border border-gray-400 text-gray-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-100">
+                        <button
+                            onClick={handleAccessClick}
+                            className={`flex items-center gap-3 border px-3 py-1.5 rounded-md text-sm transition-all ${selectionMode
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-400 text-gray-700 hover:bg-gray-100'
+                                }`}
+                        >
                             <FaCheck className="text-xs sm:text-[16px]" />
-                            <span className='sm:text-[16px]'>Access</span>
+                            <span className='sm:text-[16px]'>
+                                {selectionMode ? 'Grant Access' : 'Access'}
+                            </span>
                         </button>
+
+                        {/* Cancel Selection Button */}
+                        {selectionMode && (
+                            <button
+                                onClick={cancelSelectionMode}
+                                className="flex items-center gap-3 border border-gray-400 text-gray-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-100"
+                            >
+                                <span className='sm:text-[16px]'>Cancel</span>
+                            </button>
+                        )}
                     </div>
+
+                    {/* Selection Info */}
+                    {selectionMode && (
+                        <div className="text-sm text-gray-600">
+                            {selectedFolderIds.length} folder(s) selected
+                        </div>
+                    )}
 
                     {/* User Dropdown */}
                     <button className="flex items-center gap-3 h-[40px] border border-gray-400 text-gray-700 px-3 py-1.5 rounded-md text-sm hover:bg-gray-100">
@@ -191,20 +343,26 @@ export default function Folders() {
                 <div className="flex flex-row flex-wrap justify-center sm:justify-start mt-[3rem] gap-4 md:gap-6 lg:gap-8">
                     <div className="flex gap-6 md:gap-7 flex-wrap">
                         {folderDataList?.map((folder: FolderData, index: number) => {
-                            const title = folder.folderName || `Folder ${index + 1}`;
-                            const subtitle = `${getRelativeTime(folder.createdEpoch)}  |  ${folder.reportCount} Reports`;
+                            const title = folder.name || `Folder ${index + 1}`;
+                            const subtitle = `${getRelativeTime(folder.createdEpoch)}  |  ${folder.reportCounts} Reports`;
                             const imageSrc = "/09ec0cd855c261e47cb0ec43164ad0fc45f948d8.png";
+
+                            const encodedTitle = encodeURIComponent(title);
+                            const encodedId = encodeURIComponent(folder.folderId);
 
                             return (
                                 <FolderCard
-                                    key={folder.id}
+                                    key={folder.folderId}
                                     folder={folder}
                                     title={title}
                                     subtitle={subtitle}
                                     imageSrc={imageSrc}
-                                    link={`/folders/${encodeURIComponent(title)}`}
+                                    link={`/folders/${encodedId}/${encodedTitle}`}
                                     onEdit={handleEditFolder}
                                     onDelete={handleDeleteFolder}
+                                    selectionMode={selectionMode}
+                                    isSelected={selectedFolderIds.includes(folder.folderId)}
+                                    onSelect={handleFolderSelect}
                                 />
                             );
                         })}
@@ -221,15 +379,25 @@ export default function Folders() {
 
                 {showDeleteConfirm && (
                     <DeleteConfirmationModal
-                        folderName={folderToDelete?.folderName || ''}
+                        folderName={folderToDelete?.name || ''}
                         onConfirm={confirmDelete}
                         onCancel={cancelDelete}
                     />
                 )}
 
+                {showAccessModal && (
+                    <AccessModal
+                        selectedFolderIds={selectedFolderIds}
+                        folderDataList={folderDataList}
+                        independent={independent}
+                        selectedIndependentIds={selectedIndependentIds}
+                        onCheckboxChange={handleCheckboxChange}
+                        onSave={handleAccessSave}
+                        onCancel={handleAccessCancel}
+                    />
+                )}
             </div>
             <ToastContainer />
-
         </MasterHome>
     )
 }
@@ -242,9 +410,15 @@ interface FolderCardProps {
     link: string;
     onEdit: (folder: FolderData) => void;
     onDelete: (folder: FolderData) => void;
+    selectionMode: boolean;
+    isSelected: boolean;
+    onSelect: (folderId: number, isSelected: boolean) => void;
 }
 
-const FolderCard: React.FC<FolderCardProps> = ({ folder, title, subtitle, imageSrc, link, onEdit, onDelete }) => {
+const FolderCard: React.FC<FolderCardProps> = ({
+    folder, title, subtitle, imageSrc, link, onEdit, onDelete,
+    selectionMode, isSelected, onSelect
+}) => {
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
 
@@ -259,60 +433,250 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, title, subtitle, imageS
     };
 
     const handleClick = () => {
-        router.push(link);
+        if (selectionMode) {
+            onSelect(folder.folderId, !isSelected);
+        } else {
+            router.push(link);
+        }
+    };
+
+    const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.stopPropagation();
+        onSelect(folder.folderId, e.target.checked);
     };
 
     return (
-        <div className="relative flex flex-col items-center w-[140px] md:w-[180px] gap-2 p-3 rounded-md hover:bg-gray-200">
-            {/* Dots icon */}
-            <div className="absolute top-2 right-2 text-gray-500 text-xl cursor-pointer">
-                <button
-                    className="flex flex-col items-center text-gray-400 hover:text-gray-600 space-y-[3px] cursor-pointer"
-                    onClick={() => setMenuOpen(!menuOpen)}
-                >
-                    <span className="w-[4px] h-[4px] bg-gray-400 rounded-full"></span>
-                    <span className="w-[4px] h-[4px] bg-gray-400 rounded-full"></span>
-                    <span className="w-[4px] h-[4px] bg-gray-400 rounded-full"></span>
-                </button>
+        <div className={`relative flex flex-col items-center w-[140px] md:w-[180px] gap-2 p-3 rounded-md transition-all ${selectionMode
+                ? isSelected
+                    ? 'bg-blue-100 border-2 border-blue-500'
+                    : 'hover:bg-gray-100 border-2 border-transparent'
+                : 'hover:bg-gray-200'
+            }`}>
+            {/* Checkbox for selection mode */}
+            {selectionMode && (
+                <div className="absolute top-2 left-2 z-10">
+                    <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={handleCheckboxChange}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                </div>
+            )}
 
-                {/* Dropdown menu */}
-                {menuOpen && (
-                    <div className="absolute top-8 right-0 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
-                        <button
-                            onClick={handleEdit}
-                            className="flex items-center gap-2 px-4 py-2 w-full text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                        >
-                            <FontAwesomeIcon icon={faEdit} className="text-sm" />
-                            Edit
-                        </button>
-                        <button
-                            onClick={handleDelete}
-                            className="flex items-center gap-2 px-4 py-2 w-full text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-all"
-                        >
-                            <FontAwesomeIcon icon={faTrash} className="text-sm" />
-                            Delete
-                        </button>
-                    </div>
-                )}
-            </div>
+            {/* Dots icon - only show when not in selection mode */}
+            {!selectionMode && (
+                <div className="absolute top-2 right-2 text-gray-500 text-xl cursor-pointer">
+                    <button
+                        className="flex flex-col items-center text-gray-400 hover:text-gray-600 space-y-[3px] cursor-pointer"
+                        onClick={() => setMenuOpen(!menuOpen)}
+                    >
+                        <span className="w-[4px] h-[4px] bg-gray-400 rounded-full"></span>
+                        <span className="w-[4px] h-[4px] bg-gray-400 rounded-full"></span>
+                        <span className="w-[4px] h-[4px] bg-gray-400 rounded-full"></span>
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {menuOpen && (
+                        <div className="absolute top-8 right-0 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                            <button
+                                onClick={handleEdit}
+                                className="flex items-center gap-2 px-4 py-2 w-full text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                            >
+                                <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                                Edit
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="flex items-center gap-2 px-4 py-2 w-full text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-all"
+                            >
+                                <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                                Delete
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <img
                 src={imageSrc}
                 alt="Folder"
-                className="w-[70px] md:w-[110px] sm:w-[95px] lg:w-[140px] xl:w-[150px] cursor-pointer"
+                className={`w-[70px] md:w-[110px] sm:w-[95px] lg:w-[140px] xl:w-[150px] ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'
+                    }`}
                 onClick={handleClick}
             />
-
             <p
-                className="text-center font-medium text-sm md:text-base text-[#333] leading-tight cursor-pointer"
+                className={`text-center font-medium text-sm md:text-base text-[#333] leading-tight ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'
+                    }`}
                 onClick={handleClick}
             >
                 {title.length > 20 ? `${title.slice(0, 20)}...` : title}
             </p>
 
-            <p className="text-center text-xs text-gray-500 cursor-pointer" onClick={handleClick}>
+            <p
+                className={`text-center text-xs text-gray-500 ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'
+                    }`}
+                onClick={handleClick}
+            >
                 {subtitle}
             </p>
+        </div>
+    );
+};
+
+interface AccessModalProps {
+    selectedFolderIds: number[];
+    folderDataList: FolderData[];
+    independent: Member[];
+    selectedIndependentIds: number[];
+    onCheckboxChange: (memberId: number) => void;
+    onSave: () => void;
+    onCancel: () => void;
+}
+
+const AccessModal: React.FC<AccessModalProps> = ({
+    selectedFolderIds,
+    folderDataList,
+    independent,
+    selectedIndependentIds,
+    onCheckboxChange,
+    onSave,
+    onCancel
+}) => {
+    const [isLoading, setIsLoading] = useState(false);
+
+    const selectedFolders = folderDataList.filter(folder =>
+        selectedFolderIds.includes(folder.folderId)
+    );
+
+    // Helper function to check if a member already has access to any selected folder
+    const memberHasExistingAccess = (memberId: number) => {
+        return selectedFolders.some(folder => 
+            folder.accessToUserIds?.includes(memberId)
+        );
+    };
+
+    const handleSave = async () => {
+        if (selectedIndependentIds.length === 0) {
+            toast.error("Please select at least one member to grant access.");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await onSave();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[0.5px]"
+            onClick={onCancel}
+        >
+            <div
+                className="relative w-[95%] max-w-md md:max-w-[40rem] border border-gray-300 rounded-lg bg-white px-6 py-6 shadow-lg max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <button
+                    className="absolute top-2 right-2 text-gray-600 hover:text-red-500 text-xl font-bold"
+                    onClick={onCancel}
+                    disabled={isLoading}
+                >
+                    &times;
+                </button>
+
+                <h2 className="text-center text-[#0331B5] font-semibold text-lg md:text-[20px] mb-2">
+                    Grant Folder Access
+                </h2>
+
+                <hr className="w-[47%] md:w-[34%] mt-[-7px] mx-auto h-[2px] bg-[#0331b5] border-none" />
+
+                <p className="text-center text-gray-600 text-sm md:text-[16px] mb-4 mt-3">
+                    Grant access to selected folders for independent members.
+                </p>
+
+                {/* Selected Folders */}
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Selected Folders ({selectedFolders.length})
+                    </label>
+                    <div className="space-y-1 max-h-32 overflow-y-auto border p-2 rounded bg-gray-50">
+                        {selectedFolders.map((folder) => (
+                            <div key={folder.folderId} className="text-sm text-gray-700 py-1">
+                                • {folder.name}
+                                {folder.accessToUserIds && folder.accessToUserIds.length > 0 && (
+                                    <span className="text-xs text-blue-600 ml-2">
+                                        ({folder.accessToUserIds.length} users have access)
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Independent Members */}
+                {independent?.length > 0 && (
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Independent Members
+                        </label>
+                        <div className="space-y-2 max-h-40 overflow-y-auto border p-2 rounded">
+                            {independent.map((member: Member) => {
+                                const hasExistingAccess = memberHasExistingAccess(member.id);
+                                return (
+                                    <label key={member.id} className="flex items-center space-x-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIndependentIds.includes(member.id)}
+                                            onChange={() => onCheckboxChange(member.id)}
+                                            className="text-blue-600 focus:ring-blue-500"
+                                            disabled={isLoading}
+                                        />
+                                        <span className={`text-sm ${hasExistingAccess ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
+                                            {member.firstName} {member.lastName}
+                                            {hasExistingAccess && (
+                                                <span className="text-xs text-blue-500 ml-1">(has access)</span>
+                                            )}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {independent?.length === 0 && (
+                    <div className="mb-6 text-center text-gray-500 text-sm">
+                        No independent members found.
+                    </div>
+                )}
+
+                <div className="flex justify-center gap-3 mt-8">
+                    <button
+                        onClick={onCancel}
+                        disabled={isLoading}
+                        className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-md shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isLoading}
+                        className="bg-[#0331b5] hover:bg-[#ffd100] hover:text-black text-white font-semibold px-6 py-2 rounded-md shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {isLoading ? (
+                            <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Updating...
+                            </>
+                        ) : (
+                            'Update Access'
+                        )}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
@@ -324,7 +688,7 @@ interface UploadPopupProps {
 }
 
 const UploadPopup: React.FC<UploadPopupProps> = ({ onClose, editingFolder, onUpdate }) => {
-    const [folderName, setFolderName] = useState(editingFolder?.folderName || '');
+    const [folderName, setFolderName] = useState(editingFolder?.name || '');
     const [isLoading, setIsLoading] = useState(false);
 
     const isEditMode = !!editingFolder;
@@ -338,12 +702,10 @@ const UploadPopup: React.FC<UploadPopupProps> = ({ onClose, editingFolder, onUpd
         setIsLoading(true);
         try {
             if (isEditMode) {
-                // Edit existing folder
                 const payload = { folderName: folderName.trim() };
-                const response = await FolderEdit(editingFolder.id, payload);
+                const response = await FolderEdit(editingFolder.folderId, payload);
                 toast.success(response?.data?.message || "Folder updated successfully");
             } else {
-                // Create new folder
                 const payload = { folderName: folderName.trim() };
                 const response = await FolderCreate(payload);
                 toast.success(response?.data?.message || "Folder created successfully");

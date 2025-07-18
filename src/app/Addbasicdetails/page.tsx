@@ -1419,13 +1419,15 @@ const AddBasicDetails: React.FC = () => {
                     {loading ? 'Updating...' : 'Update'}
                   </button>
 
-                  <a
-                    href="/change-password"
-                    className="text-center text-xs sm:text-sm hover:underline transition-all duration-200"
-                  >
-                    <span className="text-gray-600">Click Here to </span>
-                    <span className="text-blue-700 font-semibold underline">Change Password</span>
-                  </a>
+                 <div className="text-center text-xs sm:text-sm hover:underline transition-all duration-200 cursor-pointer">
+  <span className="text-gray-600">Click Here to </span>
+  <span
+    className="text-blue-700 font-semibold underline"
+    onClick={() => router.push("/change-password")}
+  >
+    Change Password
+  </span>
+</div>
                 </div>
 
                 {formik.status && (

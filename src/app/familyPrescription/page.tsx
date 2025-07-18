@@ -1,26 +1,96 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faPlus, faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import MasterHome from '../components/MasterHome';
 import PrescriptionTable from '../components/PrescriptionTable';
 import PrescriptionCard from '../components/PrescriptionCard';
-import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import PrescriptionModal from '../components/PrescriptionModal';
+import { GetFmailyData } from '../services/HfilesServiceApi';
+import { decryptData } from '../utils/webCrypto';
+import { toast, ToastContainer } from 'react-toastify';
 
+interface PrescriptionData {
+    condition: string;
+    member: string;
+    customCondition: string;
+    medications: {
+        medication: string;
+        dosage: string;
+        schedule: string[];
+        timings: string[];
+    }[];
+}
 const FamilyPrescriptionPage = () => {
     const [showCheckbox, setShowCheckbox] = useState(false);
     const [userlist, setUserlist] = useState('');
     const [selectedIndexes, setSelectedIndexes] = useState<number[]>([0, 2]);
     const router = useRouter();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [prescriptions, setPrescriptions] = useState() as any;
+
+    useEffect(() => {
+        console.log('Modal state changed:', isModalOpen);
+    }, [isModalOpen]);
+
+    const handleSave = (data: PrescriptionData) => {
+        console.log('Prescription Data:', data);
+
+        data.medications.forEach((med, index) => {
+            console.log(`Medication ${index + 1}:`, {
+                name: med.medication,
+                dosage: med.dosage,
+                schedule: med.schedule,
+                timings: med.timings
+            });
+        });
+
+        // Your save logic here...
+        setIsModalOpen(false);
+    };
+
+    const getUserId = async (): Promise<number> => {
+        try {
+            const encryptedUserId = localStorage.getItem("userId");
+            if (!encryptedUserId) return 0;
+            const userIdStr = await decryptData(encryptedUserId);
+            return parseInt(userIdStr, 10);
+        } catch (error) {
+            console.error("Error getting userId:", error);
+            return 0;
+        }
+    };
+
+
+
+    const ListDataFmaily = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+            const response = await GetFmailyData(currentUserId)
+            setPrescriptions(response.data.data)
+        } catch (error) {
+            console.log(error)
+        }
+
+    }
+
+    useEffect(() => {
+        ListDataFmaily();
+    }, [])
+
 
     const handleChange = (e: { target: { value: React.SetStateAction<string>; }; }) => {
         setUserlist(e.target.value);
     };
 
     const handleBack = () => {
-       router.push('/medicalHistory')
+        router.push('/medicalHistory')
     };
 
     const handleSelectChange = (index: number, checked: boolean) => {
@@ -35,65 +105,22 @@ const FamilyPrescriptionPage = () => {
         alert(`Edit prescription at index ${index}`);
     };
 
-    const prescriptions = [
-        {
-            member: "Rahul",
-            condition: "Arthritis",
-            medication: "Cetirizine",
-            dosage: "1 tablet",
-            schedule: "Twice a day",
-            timing: "Morning Night"
-        },
-        {
-            member: "Rahul",
-            condition: "Arthritis",
-            medication: "Cetirizine",
-            dosage: "1 tablet",
-            schedule: "Twice a day",
-            timing: "Morning Night"
-        },
-        {
-            member: "Rahul",
-            condition: "Arthritis",
-            medication: "Cetirizine",
-            dosage: "1 tablet",
-            schedule: "Twice a day",
-            timing: "Morning Night"
-        },
-        {
-            member: "Rahul",
-            condition: "Arthritis",
-            medication: "Cetirizine",
-            dosage: "1 tablet",
-            schedule: "Once a day",
-            timing: "8 pm / after dinner"
-        },
-        {
-            member: "Rahul",
-            condition: "Arthritis",
-            medication: "Cetirizine",
-            dosage: "1 tablet",
-            schedule: "Twice a day",
-            timing: "Morning Night"
-        }
-    ];
 
     return (
         <MasterHome>
             <div className="p-2">
                 {/* Responsive Views */}
+                {/* {For Desktop view table} */}
                 <div className="hidden md:block mx-4">
                     <PrescriptionTable
                         prescriptions={prescriptions}
                         showCheckbox={showCheckbox}
-                        selectedIndexes={selectedIndexes}
                         onEdit={handleEdit}
-                        onSelectChange={handleSelectChange}
                         userlist={userlist}
                         handleBack={handleBack}
                     />
                 </div>
-                
+
                 {/* Mobile View */}
                 <div className="block md:hidden mx-4">
                     {/* Header Section - Only shown once */}
@@ -124,7 +151,7 @@ const FamilyPrescriptionPage = () => {
                                     <option value="Priya">Priya</option>
                                 </select>
                             </div>
-
+                            {/* {this is for mobile} */}
                             {/* Button Row */}
                             <div className="flex gap-2">
                                 <button
@@ -135,12 +162,17 @@ const FamilyPrescriptionPage = () => {
                                     Share
                                 </button>
 
-                                <button className="flex items-center gap-2 border border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition">
+                                <button
+                                    className="flex items-center gap-2 border cursor-pointer border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition"
+                                    onClick={() => {
+                                        setIsModalOpen(true);
+                                    }}
+                                >
                                     <FontAwesomeIcon icon={faPlus} />
                                     Add
                                 </button>
 
-                                <button className="flex items-center gap-2 border border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition">
+                                <button className="flex items-center gap-2 border cursor-pointer border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition">
                                     <FontAwesomeIcon icon={faCheck} />
                                     Access
                                 </button>
@@ -148,8 +180,13 @@ const FamilyPrescriptionPage = () => {
                         </div>
                     </div>
 
+                    <PrescriptionModal isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onSave={handleSave} />
+
                     {/* Prescription Cards */}
-                    {prescriptions.map((item, index) => (
+                    {/* {For Mobile view card} */}
+                    {Array.isArray(prescriptions) && prescriptions.map((item, index) => (
                         <PrescriptionCard
                             key={index}
                             prescription={item}
@@ -160,8 +197,11 @@ const FamilyPrescriptionPage = () => {
                             cardNumber={index + 1}
                         />
                     ))}
+
+
                 </div>
             </div>
+            <ToastContainer />
         </MasterHome>
     );
 };

@@ -23,7 +23,7 @@ const MasterHome: React.FC<HomeProps> = ({ children }) => {
       </main>
 
       <footer
-        className={`sticky bottom-0 transition duration-300`}
+        className={`bottom-0 transition duration-300`}
       >
         <Footer />
       </footer>

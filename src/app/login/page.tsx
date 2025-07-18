@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Eye, EyeOff } from 'lucide-react';
-import { listCounty, LoginOTp, LoginPassword, LoginWithOTPhahaha } from '../services/HfilesServiceApi';
+import { listCounty, LoginOTp, LoginPassword, LoginWithOTPhahaha, SendOtpForgot } from '../services/HfilesServiceApi';
 import { useRouter } from 'next/navigation';
 import DynamicPage from '../components/Header&Footer/DynamicPage';
 import { toast, ToastContainer } from 'react-toastify';
@@ -334,10 +334,33 @@ export default function LoginPage() {
                   <p className="text-red-500 text-xs sm:text-sm mt-1">{formik.errors.password}</p>
                 )}
                 <div className="text-right mt-2">
-                  <a href="/forgot-password" className="text-blue-800 text-xs sm:text-sm font-semibold hover:underline">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const emailValue = formik.values.emailOrPhone;
+
+                        if (!emailValue) {
+                          toast.error("Please enter your email or phone first.");
+                          return;
+                        }
+
+                        const payload = { email: emailValue };
+                        const response = await SendOtpForgot(payload);
+                        localStorage.setItem("recipientEmail", emailValue);
+                        toast.success(response?.data?.message);
+                        router.push("/forgot-password");
+                      } catch (error) {
+                        const err = error as any;
+                        toast.error(err?.response?.data?.message);
+                      }
+                    }}
+                    className="text-blue-800 text-xs sm:text-sm font-semibold hover:underline"
+                  >
                     Forgot Password?
-                  </a>
+                  </button>
                 </div>
+
               </div>
             )}
 

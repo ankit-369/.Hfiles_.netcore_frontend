@@ -920,11 +920,14 @@ const MedicalPage = () => {
         <MasterHome>
             <div className="p-2 sm:p-4 lg:p-6 xl:p-8 2xl:p-10 max-w-full mx-auto font-sans">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-3 sm:mb-4 lg:mb-6">
-                    <button className="text-black font-bold hover:text-black text-sm sm:text-base">
+                 <div className="flex justify-between items-center mb-3 sm:mb-4 lg:mb-6">
+                    <button
+                        className="text-black font-bold hover:text-black text-sm sm:text-base cursor-pointer"
+                        onClick={() => router.push("/dashboard")}
+                    >
                         <FontAwesomeIcon icon={faArrowLeft} className="mr-1 sm:mr-2" /> Back
                     </button>
-                </div>
+                    </div>
 
                 {/* Hero Section */}
                 <div className="flex items-center justify-center bg-white mb-3 sm:mb-4">

@@ -3,30 +3,45 @@
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 import { decryptData } from '../utils/webCrypto';
-import { ListHFID } from '../services/HfilesServiceApi';
+import { ListHFID, PlaneShift } from '../services/HfilesServiceApi';
+import { toast } from 'react-toastify';
+import { log } from 'console';
 
 const MasterHeader = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAccountSubmenuOpen, setIsAccountSubmenuOpen] = useState(false);
   const [hfid, setHfid] = useState<any>();
+  const [planeDetails, setPlaneDetails] = useState() as any;
   const [userInfo, setUserInfo] = useState(() => {
     const storedUserName = localStorage.getItem('userName') || '';
     return {
       name: storedUserName,
       hfId: '',
       profileImage: '/images/default-profile.png',
-      subscriptionType: 'premium'
+      subscriptionType: 'basic' // Default to basic instead of premium
     };
   });
 
-  const HfidList = async () => {
-    const encryptedUserId = localStorage.getItem("userId");
-    if (!encryptedUserId) return;
-
+  const getUserId = async (): Promise<number> => {
     try {
+      const encryptedUserId = localStorage.getItem("userId");
+      if (!encryptedUserId) return 0;
       const userIdStr = await decryptData(encryptedUserId);
-      const userId = parseInt(userIdStr, 10);
-      const response = await ListHFID(userId);
+      return parseInt(userIdStr, 10);
+    } catch (error) {
+      console.error("Error getting userId:", error);
+      return 0;
+    }
+  };
+
+  const HfidList = async () => {
+    try {
+      const currentUserId = await getUserId();
+      if (!currentUserId) {
+        toast.error("Please log in to view members.");
+        return;
+      }
+      const response = await ListHFID(currentUserId);
 
       const fetchedHfid = response.data?.data;
       setHfid(fetchedHfid);
@@ -44,6 +59,32 @@ const MasterHeader = () => {
     HfidList();
   }, []);
 
+  const Plane = async () => {
+    try {
+      const currentUserId = await getUserId();
+      if (!currentUserId) {
+        toast.error("Please log in to view members.");
+        return;
+      }
+      const response = await PlaneShift(currentUserId);
+      const planeData = response.data.data;
+      setPlaneDetails(planeData);
+
+      // Update userInfo with subscription type from API
+      if (planeData && planeData.subscriptionPlan) {
+        setUserInfo((prev) => ({
+          ...prev,
+          subscriptionType: planeData.subscriptionPlan.toLowerCase() // Convert to lowercase to match getSubscriptionRingClass cases
+        }));
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    Plane();
+  }, [])
 
   const navigateTo = (path: string) => {
     console.log(`Navigating to: ${path}`);
@@ -83,15 +124,15 @@ const MasterHeader = () => {
   };
 
   return (
-    <div className="bg-[#0331B5] px-5 py-4 flex justify-between items-center w-full relative z-[1000] font-['Poppins',sans-serif]">
+    <div className="bg-[#0331B5] px-5 py-4 flex justify-between items-center w-full sticky top-0 z-[1000] font-['Poppins',sans-serif] shadow-md">
       {/* Logo Section */}
       <div className="flex items-center gap-2">
         <a
           href="#"
-           onClick={(e) => {
-        e.preventDefault();
-        router.push('/dashboard');
-      }}
+          onClick={(e) => {
+            e.preventDefault();
+            router.push('/dashboard');
+          }}
           className="block"
         >
           <img
@@ -152,9 +193,9 @@ const MasterHeader = () => {
                   <a
                     href="#"
                     onClick={(e) => {
-                          e.preventDefault();
-                          router.push('/addbasicdetails');
-                        }}
+                      e.preventDefault();
+                      router.push('/addbasicdetails');
+                    }}
                     className="text-[#0331B5] p-2.5 flex items-center gap-2.5 text-sm border-b border-gray-200 cursor-pointer"
                   >
                     <i className="fa fa-circle-info text-lg w-5"></i>
@@ -164,10 +205,10 @@ const MasterHeader = () => {
                 <li className="hover:bg-gray-200 transition-colors">
                   <a
                     href="#"
-                   onClick={(e) => {
-                          e.preventDefault();
-                          router.push('/MembershipCard');
-                        }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push('/MembershipCard');
+                    }}
                     className="text-[#0331B5] p-2.5 flex items-center gap-2.5 text-sm border-b border-gray-200 cursor-pointer"
                   >
                     <i className="fa fa-id-card text-lg w-5"></i>
@@ -177,10 +218,10 @@ const MasterHeader = () => {
                 <li className="hover:bg-gray-200 transition-colors">
                   <a
                     href="#"
-                     onClick={(e) => {
-                          e.preventDefault();
-                          router.push('/SubscriptionPlan');
-                        }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push('/SubscriptionPlan');
+                    }}
                     className="text-[#0331B5] p-2.5 flex items-center gap-2.5 text-sm border-b border-gray-200 cursor-pointer"
                   >
                     <i className="fa fa-credit-card text-lg w-5"></i>
@@ -215,9 +256,9 @@ const MasterHeader = () => {
               <a
                 href="#"
                 onClick={(e) => {
-                          e.preventDefault();
-                          router.push('/myMembers');
-                        }}
+                  e.preventDefault();
+                  router.push('/myMembers');
+                }}
                 className="text-[#0331B5] p-4 flex items-center gap-2.5 text-base border-b border-gray-200 cursor-pointer"
               >
                 <i className="fa fa-user text-xl w-5"></i>

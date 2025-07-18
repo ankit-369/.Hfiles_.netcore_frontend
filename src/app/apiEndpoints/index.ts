@@ -36,7 +36,8 @@ export const endpoints = {
       SEND_OTP: API_NEW_Data + "profile/email/send-otp",
       VERIFY_OTP: API_NEW_Data + "profile/email/verify-otp",
       PINCODE: API_NEW_Data + "pincode",
-      UPDATE_PROFILE: API_NEW_Data + "profile"
+      UPDATE_PROFILE: API_NEW_Data + "profile",
+      SubscripationProfile:(userId:number) => `${API_NEW_Data}profile/${userId}/subscription`
    },
 
    ADD_MEMEBER: {
@@ -96,10 +97,30 @@ export const endpoints = {
 
    FOLDER : {
       CreateFolder : API_NEW_Data + "folder",
-      ListFolder :API_NEW_Data + "user",
+      // ListFolder :API_NEW_Data + "user",
+      ListFolder : (userId:number) => `${API_NEW_Data}user/${userId}/folders`,
       EditFolder : API_NEW_Data + "folder",
       DeleteFolder : API_NEW_Data + "folder",
-   }
+      UploadBatch: (userId: number, folderId: number) =>
+      `${API_NEW_Data}user/${userId}/folder/${folderId}/reports/upload-batch`,
+      GetReports: (userId: number, folderId: number) =>
+      `${API_NEW_Data}user/${userId}/folder/${folderId}/reports`,
+      DeleteReport: (userId: number, reportId: number) =>
+         `${API_NEW_Data}user/${userId}/report/${reportId}/delete`,
+      EditReport: (userId: number, reportId: number) =>
+         `${API_NEW_Data}user/${userId}/report/${reportId}/edit`,
+      AccessFolder : API_NEW_Data + "folders/access/grant"
+   },
+
+   FORGOT_PASSWORD : {
+      ForgotOtpSend : API_NEW_Data + "password/forget/otp",
+      Password_forgot : API_NEW_Data + "password/forget",
+      Change_Password : API_NEW_Data + "profile/password/change"
+   },
+
+   FAMILYPRESCRIPATION : {
+      ListFamilyData : (userId:number) => `${API_NEW_Data}UserPrescriptions/user/${userId}/prescriptions`
+   } 
 
 }
 
