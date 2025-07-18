@@ -8,7 +8,7 @@ import PrescriptionTable from '../components/PrescriptionTable';
 import PrescriptionCard from '../components/PrescriptionCard';
 import { useRouter } from 'next/navigation';
 import PrescriptionModal from '../components/PrescriptionModal';
-import { GetFmailyData } from '../services/HfilesServiceApi';
+import { GetFmailyData, LIstAllData } from '../services/HfilesServiceApi';
 import { decryptData } from '../utils/webCrypto';
 import { toast, ToastContainer } from 'react-toastify';
 
@@ -23,6 +23,17 @@ interface PrescriptionData {
         timings: string[];
     }[];
 }
+
+interface Prescription {
+    memberId: string;
+    condition: string;
+    otherCondition: string;
+    medicine: string;
+    dosage: string;
+    schedule: string;
+    timings: string;
+}
+
 const FamilyPrescriptionPage = () => {
     const [showCheckbox, setShowCheckbox] = useState(false);
     const [userlist, setUserlist] = useState('');
@@ -30,6 +41,8 @@ const FamilyPrescriptionPage = () => {
     const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [prescriptions, setPrescriptions] = useState() as any;
+    const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     useEffect(() => {
         console.log('Modal state changed:', isModalOpen);
@@ -37,6 +50,7 @@ const FamilyPrescriptionPage = () => {
 
     const handleSave = (data: PrescriptionData) => {
         console.log('Prescription Data:', data);
+        console.log('Is Edit Mode:', isEditMode);
 
         data.medications.forEach((med, index) => {
             console.log(`Medication ${index + 1}:`, {
@@ -48,7 +62,12 @@ const FamilyPrescriptionPage = () => {
         });
 
         // Your save logic here...
+        // If editing, update the existing prescription
+        // If adding, create new prescription
+        
         setIsModalOpen(false);
+        setEditingPrescription(null);
+        setIsEditMode(false);
     };
 
     const getUserId = async (): Promise<number> => {
@@ -63,8 +82,6 @@ const FamilyPrescriptionPage = () => {
         }
     };
 
-
-
     const ListDataFmaily = async () => {
         try {
             const currentUserId = await getUserId();
@@ -77,13 +94,11 @@ const FamilyPrescriptionPage = () => {
         } catch (error) {
             console.log(error)
         }
-
     }
 
     useEffect(() => {
         ListDataFmaily();
     }, [])
-
 
     const handleChange = (e: { target: { value: React.SetStateAction<string>; }; }) => {
         setUserlist(e.target.value);
@@ -102,9 +117,24 @@ const FamilyPrescriptionPage = () => {
     };
 
     const handleEdit = (index: number) => {
-        alert(`Edit prescription at index ${index}`);
+        if (prescriptions && prescriptions[index]) {
+            setEditingPrescription(prescriptions[index]);
+            setIsEditMode(true);
+            setIsModalOpen(true);
+        }
     };
 
+    const handleAdd = () => {
+        setEditingPrescription(null);
+        setIsEditMode(false);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingPrescription(null);
+        setIsEditMode(false);
+    };
 
     return (
         <MasterHome>
@@ -118,6 +148,9 @@ const FamilyPrescriptionPage = () => {
                         onEdit={handleEdit}
                         userlist={userlist}
                         handleBack={handleBack}
+                        handleChange={handleChange}
+                        setShowCheckbox={setShowCheckbox}
+                        handleAdd={handleAdd}
                     />
                 </div>
 
@@ -164,9 +197,7 @@ const FamilyPrescriptionPage = () => {
 
                                 <button
                                     className="flex items-center gap-2 border cursor-pointer border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition"
-                                    onClick={() => {
-                                        setIsModalOpen(true);
-                                    }}
+                                    onClick={handleAdd}
                                 >
                                     <FontAwesomeIcon icon={faPlus} />
                                     Add
@@ -179,10 +210,6 @@ const FamilyPrescriptionPage = () => {
                             </div>
                         </div>
                     </div>
-
-                    <PrescriptionModal isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                        onSave={handleSave} />
 
                     {/* Prescription Cards */}
                     {/* {For Mobile view card} */}
@@ -197,9 +224,16 @@ const FamilyPrescriptionPage = () => {
                             cardNumber={index + 1}
                         />
                     ))}
-
-
                 </div>
+
+                {/* Prescription Modal */}
+                <PrescriptionModal 
+                    isOpen={isModalOpen}
+                    onClose={handleCloseModal}
+                    onSave={handleSave}
+                    editingPrescription={editingPrescription}
+                    isEditMode={isEditMode}
+                />
             </div>
             <ToastContainer />
         </MasterHome>

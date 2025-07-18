@@ -2,7 +2,6 @@ import { faCheck, faPlus, faShareAlt, faTrash } from '@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ArrowLeft } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import PrescriptionModal from './PrescriptionModal';
 
 interface Prescription {
     memberId: string;
@@ -24,52 +23,21 @@ interface PrescriptionTableProps {
     handleBack?: any;
     setShowCheckbox?: any;
     handleChange?: any;
-    setIsModalOpen?: any;
-    isModalOpen?: any;
-    handleSave?: any;
+    handleAdd?: () => void;
 }
 
-interface PrescriptionData {
-    condition: string;
-    member: string;
-    customCondition: string;
-    medications: {
-        medication: string;
-        dosage: string;
-        schedule: string[];
-        timings: string[];
-    }[];
-}
 const PrescriptionTable: React.FC<PrescriptionTableProps> = ({
     prescriptions,
     onEdit,
     userlist,
     handleBack,
-    handleChange
+    handleChange,
+    setShowCheckbox,
+    showCheckbox,
+    handleAdd
 }) => {
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [showCheckbox, setShowCheckbox] = useState(false);
     const [selectedIndexes, setSelectedIndexes] = useState<number[]>([0, 2]);
-
-    useEffect(() => {
-        console.log('Modal state changed:', isModalOpen);
-    }, [isModalOpen]);
-
-    const handleSave = (data: PrescriptionData) => {
-        console.log('Prescription Data:', data);
-
-        data.medications.forEach((med, index) => {
-            console.log(`Medication ${index + 1}:`, {
-                name: med.medication,
-                dosage: med.dosage,
-                schedule: med.schedule,
-                timings: med.timings
-            });
-        });
-
-        setIsModalOpen(false);
-    };
 
     const handleSelectChange = (index: number, checked: boolean) => {
         if (checked) {
@@ -115,14 +83,11 @@ const PrescriptionTable: React.FC<PrescriptionTableProps> = ({
                     {/* Add Button */}
                     <button
                         className="flex items-center gap-2 border cursor-pointer border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition"
-                        onClick={() => {
-                            setIsModalOpen(true);
-                        }}
+                        onClick={handleAdd}
                     >
                         <FontAwesomeIcon icon={faPlus} />
                         Add
                     </button>
-
 
                     {/* Access Button */}
                     <button className="flex items-center gap-2 border border-black text-sm font-medium text-black px-4 py-2 rounded-full hover:bg-gray-100 transition">
@@ -213,10 +178,6 @@ const PrescriptionTable: React.FC<PrescriptionTableProps> = ({
                         })}
                     </tbody>
                 </table>
-
-                <PrescriptionModal isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    onSave={handleSave} />
             </div>
         </div>
     );

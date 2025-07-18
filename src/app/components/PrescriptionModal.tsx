@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
+import { LIstAllData } from '../services/HfilesServiceApi';
+import { decryptData } from '../utils/webCrypto';
+import { toast } from 'react-toastify';
 
 interface PrescriptionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (data: PrescriptionData) => void;
+    editingPrescription?: any;
+    isEditMode?: boolean;
 }
 
 interface PrescriptionData {
@@ -31,36 +36,121 @@ interface FormData {
     }[];
 }
 
-const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, onSave }) => {
+const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    onSave, 
+    editingPrescription,
+    isEditMode = false 
+}) => {
+    const [prescriptionData, setPrescriptionData] = useState() as any;
+
+    const getUserId = async (): Promise<number> => {
+        try {
+            const encryptedUserId = localStorage.getItem("userId");
+            if (!encryptedUserId) return 0;
+            const userIdStr = await decryptData(encryptedUserId);
+            return parseInt(userIdStr, 10);
+        } catch (error) {
+            console.error("Error getting userId:", error);
+            return 0;
+        }
+    };
+
+    const DataLIstAll = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+            const response = await LIstAllData(currentUserId);
+            setPrescriptionData(response.data.data.members);
+            console.log("Prescription Data:", response.data.data);
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    useEffect(() => {
+        DataLIstAll();
+    }, []);
 
     const [formData, setFormData] = useState<FormData>({
         member: '',
         condition: '',
         customCondition: '',
-        medications: [{ 
-            medication: '', 
-            dosage: '', 
-            schedule: [], 
-            timings: [] 
+        medications: [{
+            medication: '',
+            dosage: '',
+            schedule: [],
+            timings: []
         }],
     });
 
+    // Helper function to parse schedule string to array
+    const parseScheduleString = (scheduleStr: string): string[] => {
+        if (!scheduleStr) return [];
+        return scheduleStr.split(',').map(day => day.trim()).filter(day => day);
+    };
+
+    // Helper function to parse timings string to array
+    const parseTimingsString = (timingsStr: string): string[] => {
+        if (!timingsStr) return [];
+        return timingsStr.split(',').map(timing => timing.trim()).filter(timing => timing);
+    };
+
+    // Effect to populate form when editing
+    useEffect(() => {
+        if (isEditMode && editingPrescription) {
+            setFormData({
+                member: editingPrescription.memberId || '',
+                condition: editingPrescription.condition === 'Others' ? 'Others' : editingPrescription.condition || '',
+                customCondition: editingPrescription.condition === 'Others' ? editingPrescription.otherCondition || '' : '',
+                medications: [{
+                    medication: editingPrescription.medicine || '',
+                    dosage: editingPrescription.dosage || '',
+                    schedule: parseScheduleString(editingPrescription.schedule),
+                    timings: parseTimingsString(editingPrescription.timings)
+                }]
+            });
+        } else {
+            // Reset form for add mode
+            setFormData({
+                member: '',
+                condition: '',
+                customCondition: '',
+                medications: [{
+                    medication: '',
+                    dosage: '',
+                    schedule: [],
+                    timings: []
+                }],
+            });
+        }
+    }, [isEditMode, editingPrescription, isOpen]);
+
     const conditionOptions = [
-        'Alzheimers', 'Arthritis', 'Asthma', 'Anxiety', 'Blood Pressure',
+        'Alzheimers', 'Arthritis', 'Asthma', 'Anxiety', 'BloodPressure',
         'Cholesterol', 'Cancer', 'COPD', 'Diabetes', 'Depression',
         'Epilepsy', 'Thyroid', 'Vitamins', 'Others'
     ];
 
     const dayOptions = [
-        'All Days', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+        'AllDays', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
     ];
 
     const timingOptions = [
-        'After Breakfast', 'Before Breakfast', 'After Lunch', 'Before Lunch',
-        'After Dinner', 'Before Dinner', 'With a Meal', 'Noon', 'Tea Time'
+        "AfterBreakFast",
+        "BeforeBreakFast",
+        "AfterLunch",
+        "BeforeLunch",
+        "AfterDinner",
+        "BeforeDinner",
+        "WithAMeal",
+        "Noon",
+        "TeaTime"
     ];
-
-    const memberOptions = ['Ankit', 'Rahul', 'Priya'];
 
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({
@@ -83,15 +173,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
             ...prev,
             medications: prev.medications.map((med, i) => {
                 if (i !== medIndex) return med;
-                
-                if (day === 'All Days') {
+
+                if (day === 'AllDays') {
                     return {
                         ...med,
-                        schedule: med.schedule.includes('All Days') ? [] : ['All Days']
+                        schedule: med.schedule.includes('AllDays') ? [] : ['AllDays']
                     };
                 }
 
-                const newSchedule = med.schedule.filter(d => d !== 'All Days');
+                const newSchedule = med.schedule.filter(d => d !== 'AllDays');
                 if (newSchedule.includes(day)) {
                     return {
                         ...med,
@@ -112,7 +202,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
             ...prev,
             medications: prev.medications.map((med, i) => {
                 if (i !== medIndex) return med;
-                
+
                 // Single selection: replace the current timing with the new one
                 return {
                     ...med,
@@ -125,11 +215,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
     const addMedication = () => {
         setFormData(prev => ({
             ...prev,
-            medications: [...prev.medications, { 
-                medication: '', 
-                dosage: '', 
-                schedule: [], 
-                timings: [] 
+            medications: [...prev.medications, {
+                medication: '',
+                dosage: '',
+                schedule: [],
+                timings: []
             }]
         }));
     };
@@ -160,11 +250,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
             member: '',
             condition: '',
             customCondition: '',
-            medications: [{ 
-                medication: '', 
-                dosage: '', 
-                schedule: [], 
-                timings: [] 
+            medications: [{
+                medication: '',
+                dosage: '',
+                schedule: [],
+                timings: []
             }],
         });
 
@@ -176,11 +266,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
             member: '',
             condition: '',
             customCondition: '',
-            medications: [{ 
-                medication: '', 
-                dosage: '', 
-                schedule: [], 
-                timings: [] 
+            medications: [{
+                medication: '',
+                dosage: '',
+                schedule: [],
+                timings: []
             }]
         });
         onClose();
@@ -192,7 +282,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
             <div className="bg-white mt-4 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[80vh] sm:max-h-[80vh] overflow-y-auto">
                 <div className="sticky top-0 bg-white border-b px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex justify-between items-center">
-                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Add Prescription</h2>
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                        {isEditMode ? 'Edit Prescription' : 'Add Prescription'}
+                    </h2>
                     <button
                         onClick={handleClose}
                         className="text-gray-400 hover:text-gray-600 transition-colors p-1"
@@ -213,9 +305,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
                             className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                         >
                             <option value="">Select Member</option>
-                            {memberOptions.map(member => (
-                                <option key={member} value={member}>{member}</option>
-                            ))}
+                            {Array.isArray(prescriptionData) &&
+                                prescriptionData.map((member: any) => (
+                                    <option key={member.id} value={member.id}>
+                                        {member.fullName}
+                                    </option>
+                                ))}
                         </select>
                     </div>
 
@@ -403,21 +498,23 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ isOpen, onClose, 
 
                 {/* Footer Buttons */}
                 <div className="sticky bottom-0 bg-white border-t px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-center sm:justify-end gap-2 sm:gap-3">
-                    {/* Add More Button */}
-                    <button
-                        onClick={addMedication}
-                        className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-blue-700 transition-colors text-sm sm:text-base order-3 sm:order-1"
-                    >
-                        <Plus size={14} className="sm:w-4 sm:h-4" />
-                        Add More
-                    </button>
-                    
+                    {/* Add More Button - Only show in add mode or if editing and want to allow multiple medications */}
+                    {!isEditMode && (
+                        <button
+                            onClick={addMedication}
+                            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-blue-700 transition-colors text-sm sm:text-base order-3 sm:order-1"
+                        >
+                            <Plus size={14} className="sm:w-4 sm:h-4" />
+                            Add More
+                        </button>
+                    )}
+
                     <div className="flex gap-2 sm:gap-3 order-1 sm:order-2">
                         <button
                             onClick={handleSave}
                             className="flex-1 sm:flex-none bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-blue-700 transition-colors text-sm sm:text-base"
                         >
-                            Save
+                            {isEditMode ? 'Update' : 'Save'}
                         </button>
                         <button
                             onClick={handleClose}

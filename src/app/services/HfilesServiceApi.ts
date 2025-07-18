@@ -401,3 +401,7 @@ export const PasswordChange = async (payload:any) => {
 export const GetFmailyData = async (userId:number ) =>{
   return axiosInstance.get(endpoints.FAMILYPRESCRIPATION.ListFamilyData(userId))
 }
+
+export const LIstAllData = async (userId:number) => {
+  return axiosInstance.get(`${endpoints.FAMILYPRESCRIPATION.AllDataList}/${userId}`);
+}
