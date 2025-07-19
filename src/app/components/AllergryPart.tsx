@@ -104,39 +104,17 @@ const AllergryPart: React.FC<AllergyPartProps> = ({renderAllergyWarning,listAlle
                                                 {isMedicationAllergy && isSelected && isMedicationDropdownOpen && (
                                                     <tr key={`medication-${index}`}>
                                                         <td colSpan={3} className="px-2 sm:px-4 py-3 bg-gray-50">
-                                                            <div className="border border-gray-200 rounded-lg p-4 medication-dropdown">
-                                                                <div className="flex items-center gap-2 mb-3 cursor-pointer" onClick={(e) => {
+                                                            <div className="border border-gray-200 rounded-lg p-4 medication-dropdown" onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     toggleMedicationTextarea();
                                                                 }}>
+                                                                <div className="flex items-center gap-2 mb-3 cursor-pointer" >
                                                                     <h4 className="text-sm font-semibold text-gray-700">Medications:</h4>
-                                                                    <FontAwesomeIcon
-                                                                        icon={faChevronDown}
-                                                                        className={`w-3 h-3 text-blue-600 transition-transform ${isMedicationTextareaOpen ? 'rotate-180' : ''}`}
-                                                                    />
                                                                 </div>
 
-                                                                {/* Show medication list when dropdown is open but textarea is closed */}
-                                                                {!isMedicationTextareaOpen && (
-                                                                    <div className="bg-white p-3 rounded border min-h-[60px] mb-3">
-                                                                        {medications.length > 0 ? (
-                                                                            <div className="space-y-1">
-                                                                                {medications.map((medication:any, idx:any) => (
-                                                                                    <div key={idx} className="text-sm text-gray-800">
-                                                                                        • {medication}
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="text-sm text-gray-500 italic">
-                                                                                No medications added yet. Click the arrow above to add medications.
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
+                                                              
 
                                                                 {/* Medication Content - Shows/Hides based on dropdown state */}
-                                                                {isMedicationTextareaOpen && (
                                                                     <div className="space-y-3">
                                                                         <textarea
                                                                             value={medicationTextarea}
@@ -168,7 +146,6 @@ const AllergryPart: React.FC<AllergyPartProps> = ({renderAllergyWarning,listAlle
                                                                             </button>
                                                                         </div>
                                                                     </div>
-                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>

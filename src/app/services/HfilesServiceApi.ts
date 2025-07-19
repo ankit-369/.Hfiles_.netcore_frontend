@@ -411,5 +411,9 @@ return axiosInstance.post(`${endpoints.FAMILYPRESCRIPATION.AddFamilyMember}`, pa
 }
 
 export const FamilyMemberEdit = async (prescriptionId :number , payload:any) =>{
-return axiosInstance.put(`${endpoints.FAMILYPRESCRIPATION.AddFamilyMember}/${prescriptionId}`, payload)
+return axiosInstance.put(`${endpoints.FAMILYPRESCRIPATION.EditFamilyMember}/${prescriptionId}`, payload)
+}
+
+export const FamilyMemberDelete = async (prescriptionId:number) =>{
+  return axiosInstance.delete(`${endpoints.FAMILYPRESCRIPATION.DeleteFamilyMember}/${prescriptionId}`)
 }

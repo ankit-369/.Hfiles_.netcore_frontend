@@ -183,6 +183,7 @@ const MedicalPage = () => {
     const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+
     const getUserId = async (): Promise<number> => {
        try {
            const encryptedUserId = localStorage.getItem("userId");
@@ -710,19 +711,43 @@ const MedicalPage = () => {
         setIsMedicationTextareaOpen(!isMedicationTextareaOpen);
     };
 
-    const handleSaveMedicationTextarea = () => {
-        const medicationLines = medicationTextarea
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-        setMedications(medicationLines);
-        setIsMedicationTextareaOpen(false);
-        if (medicationLines.length > 0) {
-            toast.success(`${medicationLines.length} medication(s) updated successfully!`);
-        } else {
-            toast.success("All medications removed successfully!");
-        }
+    const handleSaveMedicationTextarea = async () => {
+  const medicationLines = medicationTextarea
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  setMedications(medicationLines);
+  setIsMedicationTextareaOpen(false);
+
+  if (medicationLines.length > 0) {
+    toast.success(`${medicationLines.length} medication(s) updated successfully!`);
+
+    // API payload for allergy (from each medication line)
+    const payload = {
+      staticAllergies: [],
+      dynamicAllergies: medicationLines.map(line => ({
+        allergyName: line,
+        isAllergic: true,
+      })),
     };
+
+    try {
+      const userId = await getUserId();
+      const response = await StaticAllergies(userId, payload);
+      toast.success(`${response.data.message}`);
+      setMedicationTextarea('');
+      ShowAllList();
+    } catch (error) {
+      console.error("Failed to add allergies:", error);
+      toast.error("Failed to update allergies.");
+    }
+
+  } else {
+    toast.success("All medications removed successfully!");
+  }
+};
+
 
     const validateAllergySelections = () => {
         const hasAnySelection = Object.values(allergySelections).some(value => value !== undefined);

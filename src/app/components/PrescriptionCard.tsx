@@ -1,9 +1,13 @@
-import {  Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import { FamilyMemberDelete, GetFmailyData } from '../services/HfilesServiceApi';
+import { toast } from 'react-toastify';
+import { decryptData } from '../utils/webCrypto';
+import { useEffect } from 'react';
 
 interface Props {
     cardNumber: number;
     prescription: {
-        memberId: string;
+        memberName: string;
         condition: string;
         otherCondition: string;
         medicine: string;
@@ -26,12 +30,13 @@ const PrescriptionCard: React.FC<Props> = ({
     onSelectChange
 }) => {
     const transformedPrescription = {
-        member: `${prescription.memberId}`, 
+        member: `${prescription.memberName}`,
         condition: prescription.condition === 'Others' ? prescription.otherCondition : prescription.condition,
         medication: prescription.medicine,
         dosage: prescription.dosage,
-        schedule: prescription.schedule.split(',').join(', '), 
-        timing: prescription.timings
+        schedule: prescription.schedule.split(',').join(', '),
+        timing: prescription.timings,
+        Id: prescription.id,
     };
 
     const rows = [
@@ -41,15 +46,61 @@ const PrescriptionCard: React.FC<Props> = ({
         ['Dosage', transformedPrescription.dosage],
         ['Schedule', transformedPrescription.schedule],
         ['Timing', transformedPrescription.timing],
+        ['Id', transformedPrescription.id],
     ];
+
+    const handleDelete = async (prescriptionId: number) => {
+        try {
+            const response = await FamilyMemberDelete(prescriptionId);
+            toast.success(`${response.data.message}`);
+            ListDataFmaily();
+        } catch (error) {
+            console.error('Delete failed:', error);
+        }
+    };
+
+    const getUserId = async (): Promise<number> => {
+        try {
+            const encryptedUserId = localStorage.getItem("userId");
+            if (!encryptedUserId) return 0;
+
+            const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+            return parseInt(userIdStr, 10); // converts to number 123
+        } catch (error) {
+            console.error("Error getting userId:", error);
+            return 0;
+        }
+    };
+
+    const ListDataFmaily = async () => {
+        try {
+            const currentUserId = await getUserId();
+            if (!currentUserId) {
+                toast.error("Please log in to view members.");
+                return;
+            }
+            const response = await GetFmailyData(currentUserId)
+        } catch (error) {
+            console.log(error)
+            toast.error("Failed to load prescription data.");
+        }
+    }
+
+    useEffect(() => {
+        ListDataFmaily();
+    }, [])
 
     return (
         <div className="bg-white rounded-2xl mb-6 shadow-sm overflow-hidden">
             {/* Header */}
             <div className="flex overflow-hidden mb-[2px]">
-                <div className="w-24 bg-sky-200 p-3 text-sm font-semibold text-black text-center rounded-tl-2xl border border-black border-r">
+                <div
+                    className="w-24 bg-sky-200 p-3 text-sm font-semibold text-black text-center rounded-tl-2xl border border-black border-r font-poppins-800"
+                >
                     Fields
                 </div>
+
+
                 <div className="flex-1 bg-white flex justify-between items-center px-4 rounded-tr-2xl border border-black border-l-0">
                     <h3 className="text-blue-600 font-semibold text-base text-center flex-1">
                         Prescription {cardNumber}
@@ -88,14 +139,14 @@ const PrescriptionCard: React.FC<Props> = ({
                         <button
                             onClick={onEdit}
                             className={`px-4 py-1 rounded-md text-black text-sm ${isSelected
-                                    ? 'bg-green-600 border border-black'
-                                    : 'bg-blue-200 border border-black'
+                                ? 'bg-green-600 border border-black'
+                                : 'bg-blue-200 border border-black'
                                 } hover:opacity-90 transition-opacity`}
                         >
                             Edit
                         </button>
                         <button
-                            onClick={() => alert('Delete')}
+                            onClick={() => handleDelete(transformedPrescription.Id)}
                             className="text-gray-600 hover:text-red-500 transition-colors"
                         >
                             <Trash2 size={16} />

@@ -122,7 +122,8 @@ export const endpoints = {
       ListFamilyData : (userId:number) => `${API_NEW_Data}UserPrescriptions/user/${userId}/prescriptions`,
       AllDataList : API_NEW_Data + "UserPrescriptions/prescription/master-data",
       AddFamilyMember : API_NEW_Data + "UserPrescriptions",
-      EditFamilyMember : API_NEW_Data + "UserPrescriptions"
+      EditFamilyMember : API_NEW_Data + "UserPrescriptions",
+      DeleteFamilyMember : API_NEW_Data + "UserPrescriptions"
    } 
 
 }

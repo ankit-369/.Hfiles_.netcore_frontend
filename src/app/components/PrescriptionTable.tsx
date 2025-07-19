@@ -3,9 +3,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ArrowLeft } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { FaLessThan } from 'react-icons/fa';
+import { FamilyMemberDelete, GetFmailyData } from '../services/HfilesServiceApi';
+import { toast } from 'react-toastify';
+import { decryptData } from '../utils/webCrypto';
 
 interface Prescription {
-    memberId: string;
+    memberName: string;
     condition: string;
     otherCondition: string;
     medicine: string;
@@ -47,6 +50,48 @@ const PrescriptionTable: React.FC<PrescriptionTableProps> = ({
             setSelectedIndexes(selectedIndexes.filter(i => i !== index));
         }
     };
+
+          const getUserId = async (): Promise<number> => {
+               try {
+                   const encryptedUserId = localStorage.getItem("userId");
+                   if (!encryptedUserId) return 0;
+           
+                   const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+                   return parseInt(userIdStr, 10); // converts to number 123
+               } catch (error) {
+                   console.error("Error getting userId:", error);
+                   return 0;
+               }
+           };
+      
+        const ListDataFmaily = async () => {
+            try {
+                const currentUserId = await getUserId();
+                if (!currentUserId) {
+                    toast.error("Please log in to view members.");
+                    return;
+                }
+                const response = await GetFmailyData(currentUserId)
+            } catch (error) {
+                console.log(error)
+                toast.error("Failed to load prescription data.");
+            }
+        }
+    
+        useEffect(() => {
+            ListDataFmaily();
+        }, [])
+
+    
+const handleDelete = async (prescriptionId: number) => {
+  try {
+ const response =  await FamilyMemberDelete(prescriptionId);
+    toast.success(`${response.data.message}`);
+    ListDataFmaily();
+  } catch (error) {
+    console.error('Delete failed:', error);
+  }
+};
 
     return (
         <div>
@@ -136,49 +181,48 @@ const PrescriptionTable: React.FC<PrescriptionTableProps> = ({
                     </thead>
 
                     <tbody>
-                        {prescriptions?.map((item, index) => {
-                            const isSelected = selectedIndexes.includes(index);
-                            return (
-                                <tr
-                                    key={index}
-                                    className={` border border-black group ${isSelected ? 'bg-blue-100' : 'bg-white'} hover:bg-blue-50 transition`}
-                                >
-                                    {showCheckbox && (
-                                        <td className="p-3  border border-black ">
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={(e) => handleSelectChange?.(index, e.target.checked)}
-                                                className="w-5 h-5 accent-black p-3  border border-black  "
-                                            />
-                                        </td>
-                                    )}
-                                    <td className="p-3  border border-black ">{item.memberId}</td>
-                                    <td className="p-3 border border-black ">{item.condition},{item.otherCondition}</td>
-                                    <td className="p-3 border border-black ">{item.medicine}</td>
-                                    <td className="p-3 border border-black ">{item.dosage}</td>
-                                    <td className="p-3 border border-black ">{item.schedule}</td>
-                                    <td className="p-3 border border-black  whitespace-pre-line">{item.timings}</td>
-                                    <td className="p-3 border border-black whitespace-pre-line flex items-center justify-center gap-2">
-                                        <button
-                                            className={`px-4 py-1 rounded text-black ${isSelected ? 'bg-green-600 border border-black' : 'bg-cyan-100 border border-black'}`}
-                                            onClick={() => onEdit?.(index)}
-                                        >
-                                            Edit
-                                        </button>
+                        {prescriptions?.map((item:any, index) => {
+    const isSelected = selectedIndexes.includes(index);
+    return (
+        <tr
+            key={index}
+            className={`border border-black group ${isSelected ? 'bg-blue-100' : 'bg-white'} hover:bg-blue-50 transition`}
+        >
+            {showCheckbox && (
+                <td className="p-3 border border-black">
+                    <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => handleSelectChange?.(index, e.target.checked)}
+                        className="w-5 h-5 accent-black"
+                    />
+                </td>
+            )}
+            <td className="p-3 border border-black">{item.memberName}</td>
+            <td className="p-3 border border-black">{item.condition}{item.otherCondition ? `, ${item.otherCondition}` : ''}</td>
+            <td className="p-3 border border-black">{item.medicine}</td>
+            <td className="p-3 border border-black">{item.dosage}</td>
+            <td className="p-3 border border-black">{item.schedule}</td>
+            <td className="p-3 border border-black whitespace-pre-line">{item.timings}</td>
+            <td className="p-3 border border-black whitespace-pre-line flex items-center justify-center gap-2">
+                <button
+                    className={`px-4 py-1 rounded text-black ${isSelected ? 'bg-green-600 border border-black' : 'bg-cyan-100 border border-black'}`}
+                    onClick={() => onEdit?.(index)}
+                >
+                    Edit
+                </button>
 
-                                        <button
-                                            className="text-black hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-                                            onClick={() => alert('Delete action')}
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </td>
+                <button
+                    className="text-black hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                    onClick={() => handleDelete(item.id)} // item.id is like 22
+                >
+                    <FontAwesomeIcon icon={faTrash} />
+                </button>
+            </td>
+        </tr>
+    );
+})}
 
-                                </tr>
-
-                            );
-                        })}
                     </tbody>
                 </table>
             </div>
