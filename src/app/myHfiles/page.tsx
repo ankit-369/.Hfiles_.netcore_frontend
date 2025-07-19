@@ -40,14 +40,13 @@ const MedicalDashboard = () => {
         { Id: 10, Name: "INVOICES/MEDICLAIM INSURANCE" },
     ];
 
-    const getUserId = async (): Promise<number> => {
+     const getUserId = async (): Promise<number> => {
         try {
             const encryptedUserId = localStorage.getItem("userId");
-            if (!encryptedUserId) {
-                return 0;
-            }
-            const userIdStr = await decryptData(encryptedUserId);
-            return parseInt(userIdStr, 10);
+            if (!encryptedUserId) return 0;
+    
+            const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+            return parseInt(userIdStr, 10); // converts to number 123
         } catch (error) {
             console.error("Error getting userId:", error);
             return 0;

@@ -6,6 +6,7 @@ import MasterHome from '../components/MasterHome';
 import { ListReport, MemberList, DeleteReport, ReportShare } from '../services/HfilesServiceApi';
 import { toast, ToastContainer } from 'react-toastify';
 import { decryptData } from '../utils/webCrypto';
+import { FaLessThan } from 'react-icons/fa';
 
 interface Report {
     id: number;
@@ -96,21 +97,18 @@ const AllReportsPage = () => {
         try {
             const encryptedUserId = localStorage.getItem("userId");
             if (!encryptedUserId) return 0;
-            const userIdStr = await decryptData(encryptedUserId);
-            return parseInt(userIdStr, 10);
+
+            const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+            return parseInt(userIdStr, 10); // converts to number 123
         } catch (error) {
             console.error("Error getting userId:", error);
             return 0;
         }
     };
 
+
     const fetchMemberList = async () => {
         const currentUserId = await getUserId();
-        if (!currentUserId) {
-            toast.error("Please log in to view members.");
-            return;
-        }
-
         try {
             const response = await MemberList(currentUserId);
             const data = response?.data?.data;
@@ -298,7 +296,7 @@ const AllReportsPage = () => {
                                     onClick={handleBack}
                                     className="mr-1 sm:mr-2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center"
                                 >
-                                    <ArrowLeft size={18} className="text-gray-600 mr-0.5 sm:mr-1" />
+                                   <FaLessThan className="w-4 h-4 mr-2" />
                                     <span className="text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Back</span>
                                 </button>
                             </div>
@@ -353,8 +351,8 @@ const AllReportsPage = () => {
                                     onClick={handleShare}
                                     disabled={isSharing}
                                     className={`flex items-center space-x-2 px-3 md:px-4 py-2 border border-gray-300 rounded-lg transition-colors text-sm md:text-base ${selectedReports.size > 0
-                                            ? 'hover:bg-gray-50 text-gray-900'
-                                            : 'text-gray-400 cursor-not-allowed'
+                                        ? 'hover:bg-gray-50 text-gray-900'
+                                        : 'text-gray-400 cursor-not-allowed'
                                         } ${isSharing ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {isSharing ? (
@@ -413,8 +411,8 @@ const AllReportsPage = () => {
                                         onClick={handleShare}
                                         disabled={isSharing}
                                         className={`flex items-center justify-center space-x-1 px-3 py-2 border border-gray-300 rounded-lg transition-colors text-sm ${selectedReports.size > 0
-                                                ? 'hover:bg-gray-50 text-gray-900'
-                                                : 'text-gray-400 cursor-not-allowed'
+                                            ? 'hover:bg-gray-50 text-gray-900'
+                                            : 'text-gray-400 cursor-not-allowed'
                                             } ${isSharing ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         {isSharing ? (
@@ -497,8 +495,8 @@ const AllReportsPage = () => {
                                 <div
                                     key={report.id}
                                     className={`bg-white rounded-lg shadow-sm border transition-all hover:shadow-md ${selectedReports.has(report.id)
-                                            ? 'border-blue-500 ring-2 ring-blue-200'
-                                            : 'border-gray-300'
+                                        ? 'border-blue-500 ring-2 ring-blue-200'
+                                        : 'border-gray-300'
                                         }`}
                                 >
                                     {/* Checkbox positioned at top left */}
@@ -560,8 +558,8 @@ const AllReportsPage = () => {
                                                 onClick={() => handleDeleteReport(report)}
                                                 disabled={isDeleting === report.id}
                                                 className={`p-2 rounded-full transition-colors ${isDeleting === report.id
-                                                        ? 'cursor-not-allowed bg-gray-100'
-                                                        : 'hover:bg-red-100'
+                                                    ? 'cursor-not-allowed bg-gray-100'
+                                                    : 'hover:bg-red-100'
                                                     }`}
                                                 title="Delete Report"
                                             >

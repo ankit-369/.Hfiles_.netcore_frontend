@@ -2,6 +2,7 @@ import { faCheck, faPlus, faShareAlt, faTrash } from '@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ArrowLeft } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { FaLessThan } from 'react-icons/fa';
 
 interface Prescription {
     memberId: string;
@@ -51,13 +52,15 @@ const PrescriptionTable: React.FC<PrescriptionTableProps> = ({
         <div>
             <div className="flex justify-between items-center mt-6 mb-6 relative mx-3">
                 {/* Left: Back */}
-                <button
-                    className="text-black font-bold hover:text-black cursor-pointer"
-                    onClick={handleBack}
-                >
-                    <ArrowLeft className="mr-1 inline" size={16} />
-                    Back
-                </button>
+                <div className="flex items-center">
+                    <button
+                        onClick={handleBack}
+                        className="mr-1 sm:mr-2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center"
+                    >
+                        <FaLessThan className="w-4 h-4 mr-2" />
+                        <span className="text-xs sm:text-lg font-bold text-black  hidden sm:inline">Back</span>
+                    </button>
+                </div>
 
                 {/* Center: Title */}
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-800 absolute left-1/2 transform -translate-x-1/2">

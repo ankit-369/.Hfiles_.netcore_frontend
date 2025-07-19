@@ -405,3 +405,11 @@ export const GetFmailyData = async (userId:number ) =>{
 export const LIstAllData = async (userId:number) => {
   return axiosInstance.get(`${endpoints.FAMILYPRESCRIPATION.AllDataList}/${userId}`);
 }
+
+export const FamilyMemberAdded = async (payload:any) =>{
+return axiosInstance.post(`${endpoints.FAMILYPRESCRIPATION.AddFamilyMember}`, payload)
+}
+
+export const FamilyMemberEdit = async (prescriptionId :number , payload:any) =>{
+return axiosInstance.put(`${endpoints.FAMILYPRESCRIPATION.AddFamilyMember}/${prescriptionId}`, payload)
+}

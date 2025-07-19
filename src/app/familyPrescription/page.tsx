@@ -8,7 +8,7 @@ import PrescriptionTable from '../components/PrescriptionTable';
 import PrescriptionCard from '../components/PrescriptionCard';
 import { useRouter } from 'next/navigation';
 import PrescriptionModal from '../components/PrescriptionModal';
-import { GetFmailyData, LIstAllData } from '../services/HfilesServiceApi';
+import { GetFmailyData, LIstAllData, FamilyMemberAdded, FamilyMemberEdit } from '../services/HfilesServiceApi';
 import { decryptData } from '../utils/webCrypto';
 import { toast, ToastContainer } from 'react-toastify';
 
@@ -25,6 +25,8 @@ interface PrescriptionData {
 }
 
 interface Prescription {
+    id?: number; // Add id field for prescription identification
+    prescriptionId?: number; // Alternative id field name
     memberId: string;
     condition: string;
     otherCondition: string;
@@ -32,6 +34,21 @@ interface Prescription {
     dosage: string;
     schedule: string;
     timings: string;
+}
+
+// API Payload interface
+interface ApiPayload {
+    userId: number;
+    memberId: number;
+    condition: string;
+    otherCondition: string;
+    createdEpoch: number;
+    medicines: {
+        medicine: string;
+        dosage: string;
+        schedule: string;
+        timings: string;
+    }[];
 }
 
 const FamilyPrescriptionPage = () => {
@@ -48,40 +65,113 @@ const FamilyPrescriptionPage = () => {
         console.log('Modal state changed:', isModalOpen);
     }, [isModalOpen]);
 
-    const handleSave = (data: PrescriptionData) => {
-        console.log('Prescription Data:', data);
-        console.log('Is Edit Mode:', isEditMode);
-
-        data.medications.forEach((med, index) => {
-            console.log(`Medication ${index + 1}:`, {
-                name: med.medication,
-                dosage: med.dosage,
-                schedule: med.schedule,
-                timings: med.timings
-            });
-        });
-
-        // Your save logic here...
-        // If editing, update the existing prescription
-        // If adding, create new prescription
+    // Function to transform modal data to API payload
+    const transformToApiPayload = async (data: PrescriptionData): Promise<ApiPayload> => {
+        const currentUserId = await getUserId();
         
-        setIsModalOpen(false);
-        setEditingPrescription(null);
-        setIsEditMode(false);
+        // Transform medications array
+        const medicines = data.medications.map(med => ({
+            medicine: med.medication,
+            dosage: med.dosage,
+            schedule: med.schedule.join(','), // Convert array to comma-separated string
+            timings: med.timings.join(',')    // Convert array to comma-separated string
+        }));
+
+        return {
+            userId: currentUserId,
+            memberId: parseInt(data.member) || 0, // Assuming member is stored as string ID
+            condition: data.condition,
+            otherCondition: data.customCondition || "",
+            createdEpoch: Math.floor(Date.now() / 1000), // Current timestamp in seconds
+            medicines: medicines
+        };
     };
 
-    const getUserId = async (): Promise<number> => {
+    const handleSave = async (data: PrescriptionData) => {
         try {
-            const encryptedUserId = localStorage.getItem("userId");
-            if (!encryptedUserId) return 0;
-            const userIdStr = await decryptData(encryptedUserId);
-            return parseInt(userIdStr, 10);
+            console.log('Prescription Data:', data);
+            console.log('Is Edit Mode:', isEditMode);
+
+            // Log medication details
+            data.medications.forEach((med, index) => {
+                console.log(`Medication ${index + 1}:`, {
+                    name: med.medication,
+                    dosage: med.dosage,
+                    schedule: med.schedule,
+                    timings: med.timings
+                });
+            });
+
+            if (isEditMode && editingPrescription) {
+                // Handle edit mode
+                console.log('Updating prescription...');
+                
+                // Transform data to API payload format
+                const apiPayload = await transformToApiPayload(data);
+                console.log('Edit API Payload:', apiPayload);
+
+                // Get prescription ID - check for different possible field names
+                const prescriptionId = editingPrescription.id || 
+                                     editingPrescription.prescriptionId || 
+                                     editingPrescription.memberId;
+
+                if (!prescriptionId) {
+                    toast.error("Prescription ID not found. Cannot update prescription.");
+                    return;
+                }
+
+                // Make API call for edit
+                const response = await FamilyMemberEdit(
+                    parseInt(prescriptionId.toString()), 
+                    apiPayload
+                );
+                toast.success(`${response.data.message}`)
+            
+
+            } else {
+                // Handle add mode
+                console.log('Adding new prescription...');
+                
+                // Transform data to API payload format
+                const apiPayload = await transformToApiPayload(data);
+                console.log('Add API Payload:', apiPayload);
+
+                // Make API call for add
+                const response = await FamilyMemberAdded(apiPayload);
+                
+                if (response.data) {
+                    toast.success(response.data.message || "Prescription added successfully!");
+                    
+                    // Refresh the prescription list
+                    await ListDataFmaily();
+                } else {
+                    toast.error("Failed to add prescription");
+                }
+            }
+            
+            // Close modal and reset state
+            setIsModalOpen(false);
+            setEditingPrescription(null);
+            setIsEditMode(false);
+            
         } catch (error) {
-            console.error("Error getting userId:", error);
-            return 0;
+            console.error("Error saving prescription:", error);
         }
     };
 
+    const getUserId = async (): Promise<number> => {
+       try {
+           const encryptedUserId = localStorage.getItem("userId");
+           if (!encryptedUserId) return 0;
+   
+           const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+           return parseInt(userIdStr, 10); // converts to number 123
+       } catch (error) {
+           console.error("Error getting userId:", error);
+           return 0;
+       }
+   };
+    
     const ListDataFmaily = async () => {
         try {
             const currentUserId = await getUserId();
@@ -93,6 +183,7 @@ const FamilyPrescriptionPage = () => {
             setPrescriptions(response.data.data)
         } catch (error) {
             console.log(error)
+            toast.error("Failed to load prescription data.");
         }
     }
 
@@ -118,7 +209,10 @@ const FamilyPrescriptionPage = () => {
 
     const handleEdit = (index: number) => {
         if (prescriptions && prescriptions[index]) {
-            setEditingPrescription(prescriptions[index]);
+            const prescriptionToEdit = prescriptions[index];
+            console.log('Editing prescription:', prescriptionToEdit);
+            
+            setEditingPrescription(prescriptionToEdit);
             setIsEditMode(true);
             setIsModalOpen(true);
         }

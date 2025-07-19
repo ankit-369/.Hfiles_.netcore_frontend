@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import MasterHome from '../components/MasterHome';
+import { FaLessThan } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
 
 // JSON data structure
 const membershipData = {
@@ -131,6 +133,7 @@ const MembershipCard: React.FC = () => {
   const [isDesktop, setIsDesktop] = useState<boolean>(false);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const router = useRouter();
 
   // Simulate fetching data
   const fetchMembershipData = async () => {
@@ -157,10 +160,9 @@ const MembershipCard: React.FC = () => {
     }
   };
 
-  const handleBackClick = () => {
-    // Router navigation would go here
-    console.log('Navigate back to dashboard');
-  };
+const handleBackClick = () => {
+  router.push('/dashboard');
+};
 
   useEffect(() => {
     const handleResize = (): void => {
@@ -209,88 +211,47 @@ const MembershipCard: React.FC = () => {
 
   return (
     <MasterHome>
-    <div className="h-screen bg-gray-50">
-      <div className=" relative min-h-screen overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4 sm:mb-6">
-          <button
-            className="flex items-center text-black font-bold hover:text-gray-700 transition-colors duration-200 text-sm sm:text-base"
-            onClick={handleBackClick}
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+      <div className="h-screen bg-gray-50">
+        <div className=" relative  overflow-y-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4 sm:mb-6 ">
+            <button
+              className="flex items-center text-black font-bold hover:text-gray-700 transition-colors duration-200 text-sm sm:text-base"
+              onClick={handleBackClick}
+            >
+                 <FaLessThan className="w-4 h-4 mr-2" />
             Back
-          </button>
-        </div>
-
-        {/* Title Section */}
-        <div className="text-center mx-auto mt-2 pb-16 sm:pb-20">
-          <div className="flex flex-col gap-2 sm:gap-4 mx-3 sm:mx-5 rounded-3xl p-2 sm:p-4 lg:p-8 justify-center">
-            <h1 className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-blue-700">
-              Membership Card
-            </h1>
-            <div className="w-32 sm:w-40 md:w-48 border-b-2 border-blue-700 mx-auto mb-2 sm:mb-4" />
-            <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-gray-700 px-2 sm:px-4">
-              Easily view your membership card and your family's—all in one place, right here.
-            </p>
+            </button>
           </div>
 
-          <hr className="border-t-2 border-gray-800 w-[90%] mx-auto mb-6 sm:mb-8" />
-
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-5 md:px-8 lg:px-12 w-full  mx-auto">
-
-            {/* My Card */}
-            <div className="flex flex-col py-2">
-              <div
-                className="flex items-center justify-between cursor-pointer md:cursor-default p-3 sm:p-5 md:p-6 w-full hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                onClick={() => handleCardToggle('mycard')}
-              >
-                <span className="text-lg sm:text-xl font-semibold text-black md:text-center md:w-full">
-                  My Card
-                </span>
-                <div className="md:hidden">
-                  {expandedCard === 'mycard' ?
-                    <ChevronUp className="w-5 h-5" /> :
-                    <ChevronDown className="w-5 h-5" />
-                  }
-                </div>
-              </div>
-
-              <div className="shadow-lg rounded-3xl p-3 sm:p-4 md:p-6 w-[95%] md:w-full mx-auto bg-white">
-                <div className="h-px bg-black w-full mb-3 mt-1"></div>
-                <div className={`transition-all duration-300 ease-in-out ${(expandedCard === 'mycard' || isDesktop) ? 'block opacity-100' : 'hidden opacity-0'
-                  } md:block md:opacity-100`}>
-                  <MembershipCardDisplay
-                    user={data.myCard}
-                    isMyCard={true}
-                    customerService={data.customerService}
-                  />
-                </div>
-              </div>
-
-              <div className="text-right mt-3 sm:mt-4 px-2">
-                <a
-                  href="#"
-                  className="text-blue-600 underline text-xs sm:text-sm hover:text-blue-800 transition-colors duration-200"
-                >
-                  View ABHA card here
-                </a>
-              </div>
+          {/* Title Section */}
+          <div className="text-center mx-auto mt-2 pb-16 sm:pb-20">
+            <div className="flex flex-col gap-2 sm:gap-4 mx-3 sm:mx-5 rounded-3xl p-2 sm:p-4 lg:p-8 justify-center">
+              <h1 className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-blue-700">
+                Membership Card
+              </h1>
+              <div className="w-32 sm:w-40 md:w-48 border-b-2 border-blue-700 mx-auto mb-2 sm:mb-4" />
+              <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-gray-700 px-2 sm:px-4">
+                Easily view your membership card and your family's—all in one place, right here.
+              </p>
             </div>
 
-            {/* Family Member Cards */}
-            {data.familyMembers.map((user: UserData) => (
-              <div key={user.user_id} className="flex flex-col py-2">
+            <hr className="border-t-2 border-gray-800 w-[90%] mx-auto mb-6 sm:mb-8" />
+
+            {/* Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-5 md:px-8 lg:px-12 w-full  mx-auto">
+
+              {/* My Card */}
+              <div className="flex flex-col py-2">
                 <div
                   className="flex items-center justify-between cursor-pointer md:cursor-default p-3 sm:p-5 md:p-6 w-full hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                 onClick={() => user.user_id !== undefined && handleCardToggle(user.user_id)}
-
+                  onClick={() => handleCardToggle('mycard')}
                 >
                   <span className="text-lg sm:text-xl font-semibold text-black md:text-center md:w-full">
-                    {user.user_firstname}'s Card
+                    My Card
                   </span>
                   <div className="md:hidden">
-                    {expandedCard === user.user_id ?
+                    {expandedCard === 'mycard' ?
                       <ChevronUp className="w-5 h-5" /> :
                       <ChevronDown className="w-5 h-5" />
                     }
@@ -299,10 +260,11 @@ const MembershipCard: React.FC = () => {
 
                 <div className="shadow-lg rounded-3xl p-3 sm:p-4 md:p-6 w-[95%] md:w-full mx-auto bg-white">
                   <div className="h-px bg-black w-full mb-3 mt-1"></div>
-                  <div className={`transition-all duration-300 ease-in-out ${(expandedCard === user.user_id || isDesktop) ? 'block opacity-100' : 'hidden opacity-0'
+                  <div className={`transition-all duration-300 ease-in-out ${(expandedCard === 'mycard' || isDesktop) ? 'block opacity-100' : 'hidden opacity-0'
                     } md:block md:opacity-100`}>
                     <MembershipCardDisplay
-                      user={user}
+                      user={data.myCard}
+                      isMyCard={true}
                       customerService={data.customerService}
                     />
                   </div>
@@ -317,11 +279,51 @@ const MembershipCard: React.FC = () => {
                   </a>
                 </div>
               </div>
-            ))}
+
+              {/* Family Member Cards */}
+              {data.familyMembers.map((user: UserData) => (
+                <div key={user.user_id} className="flex flex-col py-2">
+                  <div
+                    className="flex items-center justify-between cursor-pointer md:cursor-default p-3 sm:p-5 md:p-6 w-full hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                    onClick={() => user.user_id !== undefined && handleCardToggle(user.user_id)}
+
+                  >
+                    <span className="text-lg sm:text-xl font-semibold text-black md:text-center md:w-full">
+                      {user.user_firstname}'s Card
+                    </span>
+                    <div className="md:hidden">
+                      {expandedCard === user.user_id ?
+                        <ChevronUp className="w-5 h-5" /> :
+                        <ChevronDown className="w-5 h-5" />
+                      }
+                    </div>
+                  </div>
+
+                  <div className="shadow-lg rounded-3xl p-3 sm:p-4 md:p-6 w-[95%] md:w-full mx-auto bg-white">
+                    <div className="h-px bg-black w-full mb-3 mt-1"></div>
+                    <div className={`transition-all duration-300 ease-in-out ${(expandedCard === user.user_id || isDesktop) ? 'block opacity-100' : 'hidden opacity-0'
+                      } md:block md:opacity-100`}>
+                      <MembershipCardDisplay
+                        user={user}
+                        customerService={data.customerService}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-right mt-3 sm:mt-4 px-2">
+                    <a
+                      href="#"
+                      className="text-blue-600 underline text-xs sm:text-sm hover:text-blue-800 transition-colors duration-200"
+                    >
+                      View ABHA card here
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </MasterHome>
   );
 };

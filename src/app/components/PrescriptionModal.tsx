@@ -45,17 +45,18 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 }) => {
     const [prescriptionData, setPrescriptionData] = useState() as any;
 
-    const getUserId = async (): Promise<number> => {
-        try {
-            const encryptedUserId = localStorage.getItem("userId");
-            if (!encryptedUserId) return 0;
-            const userIdStr = await decryptData(encryptedUserId);
-            return parseInt(userIdStr, 10);
-        } catch (error) {
-            console.error("Error getting userId:", error);
-            return 0;
-        }
-    };
+ const getUserId = async (): Promise<number> => {
+    try {
+        const encryptedUserId = localStorage.getItem("userId");
+        if (!encryptedUserId) return 0;
+
+        const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+        return parseInt(userIdStr, 10); // converts to number 123
+    } catch (error) {
+        console.error("Error getting userId:", error);
+        return 0;
+    }
+};
 
     const DataLIstAll = async () => {
         try {

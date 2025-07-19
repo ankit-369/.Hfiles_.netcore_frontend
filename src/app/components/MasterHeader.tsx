@@ -22,17 +22,18 @@ const MasterHeader = () => {
     };
   });
 
-  const getUserId = async (): Promise<number> => {
+ const getUserId = async (): Promise<number> => {
     try {
-      const encryptedUserId = localStorage.getItem("userId");
-      if (!encryptedUserId) return 0;
-      const userIdStr = await decryptData(encryptedUserId);
-      return parseInt(userIdStr, 10);
+        const encryptedUserId = localStorage.getItem("userId");
+        if (!encryptedUserId) return 0;
+
+        const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+        return parseInt(userIdStr, 10); // converts to number 123
     } catch (error) {
-      console.error("Error getting userId:", error);
-      return 0;
+        console.error("Error getting userId:", error);
+        return 0;
     }
-  };
+};
 
   const HfidList = async () => {
     try {
@@ -111,6 +112,9 @@ const MasterHeader = () => {
     localStorage.removeItem('isPhoneVerified');
     localStorage.removeItem('isEmailVerified');
     localStorage.removeItem('userName');
+    localStorage.removeItem('rzp_checkout_anon_id');
+    localStorage.removeItem('rzp_device_id');
+    localStorage.removeItem('rzp_stored_checkout_id');
     router.push('/login');
   };
 

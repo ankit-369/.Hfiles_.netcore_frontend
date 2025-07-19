@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState } from 'react';
-import { FaShareAlt } from "react-icons/fa";
+import { FaLessThan, FaShareAlt } from "react-icons/fa";
 import { FaCheck } from "react-icons/fa";
 import { FaChevronDown } from "react-icons/fa";
 import { useRouter } from "next/navigation";
@@ -60,13 +60,17 @@ export default function Folders() {
     const storedUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '';
     const [folderDataList, setFolderDataList] = useState<FolderData[]>([]);
     const [lastReportName, setLastReportName] = useState("");
+    const router = useRouter();
+    const [searchTerm, setSearchTerm] = useState(''); // Add this new state
+    const [filteredFolderDataList, setFilteredFolderDataList] = useState<FolderData[]>([]);
 
     const getUserId = async (): Promise<number> => {
         try {
             const encryptedUserId = localStorage.getItem("userId");
             if (!encryptedUserId) return 0;
-            const userIdStr = await decryptData(encryptedUserId);
-            return parseInt(userIdStr, 10);
+
+            const userIdStr = await decryptData(encryptedUserId); // decrypted string: "123"
+            return parseInt(userIdStr, 10); // converts to number 123
         } catch (error) {
             console.error("Error getting userId:", error);
             return 0;
@@ -81,15 +85,40 @@ export default function Folders() {
                 return;
             }
             const response = await FolderList(currentUserId)
-            setFolderDataList(response?.data?.data)
-            if (response?.data?.data?.length > 0) {
-                const lastFolder = response.data.data[response.data.data.length - 1];
-                setLastReportName(lastFolder.folderName || "");
+            const folders = response?.data?.data || [];
+            setFolderDataList(folders);
+            setFilteredFolderDataList(folders); // Initialize filtered list
+
+            if (folders.length > 0) {
+                const lastFolder = folders[folders.length - 1];
+                setLastReportName(lastFolder.name || "");
             }
         } catch (error) {
             console.log(error)
         }
     }
+
+    const handleSearch = (searchValue: string) => {
+        setSearchTerm(searchValue);
+
+        if (!searchValue.trim()) {
+            // If search is empty, show all folders
+            setFilteredFolderDataList(folderDataList);
+        } else {
+            // Filter folders based on name and folderId
+            const filtered = folderDataList.filter(folder => {
+                const nameMatch = folder.name.toLowerCase().includes(searchValue.toLowerCase());
+                const idMatch = folder.folderId.toString().includes(searchValue);
+                return nameMatch || idMatch;
+            });
+            setFilteredFolderDataList(filtered);
+        }
+    };
+
+    // Update useEffect to handle search when folderDataList changes
+    useEffect(() => {
+        handleSearch(searchTerm);
+    }, [folderDataList]);
 
     const ListMember = async () => {
         try {
@@ -102,14 +131,13 @@ export default function Folders() {
             setIndependent(response?.data?.data?.independentMembers)
         } catch (error) {
             console.error("Error fetching members:", error);
-            toast.error("Failed to load members. Please try again.");
         }
     };
 
     // Helper function to get existing access user IDs
     const getExistingAccessUserIds = () => {
         const accessUserIds = new Set<number>();
-        
+
         // Get all users who have access to any of the selected folders
         selectedFolderIds.forEach(folderId => {
             const folder = folderDataList.find(f => f.folderId === folderId);
@@ -119,7 +147,7 @@ export default function Folders() {
                 });
             }
         });
-        
+
         return Array.from(accessUserIds);
     };
 
@@ -178,11 +206,11 @@ export default function Folders() {
                 toast.error("Please select at least one folder to grant access.");
                 return;
             }
-            
+
             // Pre-populate selectedIndependentIds with users who already have access
             const existingAccessUserIds = getExistingAccessUserIds();
             setSelectedIndependentIds(existingAccessUserIds);
-            
+
             setShowAccessModal(true);
             ListMember();
         }
@@ -255,7 +283,7 @@ export default function Folders() {
             setSelectionMode(false);
             setSelectedFolderIds([]);
             setSelectedIndependentIds([]);
-            
+
             // Refresh folder data to get updated access info
             DataListFolder();
         } catch (error: any) {
@@ -276,9 +304,24 @@ export default function Folders() {
     return (
         <MasterHome>
             <div className='Main w-[95%] mx-auto sm:w-[90%]'>
-                <Search />
+                <div className="w-full flex items-center justify-between mt-4 px-4">
+                    {/* Back button */}
+                    <div className="flex items-center">
+                        <button
+                            onClick={() => router.push('/myHfiles')}
+                            className="mr-1 sm:mr-2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center"
+                        >
+                            <FaLessThan className="w-4 h-4 mr-2" />
+                            <span className="text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Back</span>
+                        </button>
+                    </div>
 
-                <div className=''>
+                    {/* Search component */}
+                    <Search onSearch={handleSearch} placeholder="Search " />
+                </div>
+
+
+                <div className='mt-2'>
                     <div className='flex flex-col text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-sm\6 leading-tight'>
                         <span className='text-[#0331B5] font-bold'>{storedUserName}</span>
                         <span className='text-black font-bold'>Health Library</span>
@@ -305,8 +348,8 @@ export default function Folders() {
                         <button
                             onClick={handleAccessClick}
                             className={`flex items-center gap-3 border px-3 py-1.5 rounded-md text-sm transition-all ${selectionMode
-                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                    : 'border-gray-400 text-gray-700 hover:bg-gray-100'
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-400 text-gray-700 hover:bg-gray-100'
                                 }`}
                         >
                             <FaCheck className="text-xs sm:text-[16px]" />
@@ -342,32 +385,69 @@ export default function Folders() {
 
                 <div className="flex flex-row flex-wrap justify-center sm:justify-start mt-[3rem] gap-4 md:gap-6 lg:gap-8">
                     <div className="flex gap-6 md:gap-7 flex-wrap">
-                        {folderDataList?.map((folder: FolderData, index: number) => {
-                            const title = folder.name || `Folder ${index + 1}`;
-                            const subtitle = `${getRelativeTime(folder.createdEpoch)}  |  ${folder.reportCounts} Reports`;
-                            const imageSrc = "/09ec0cd855c261e47cb0ec43164ad0fc45f948d8.png";
+                        {/* Update this section to use filteredFolderDataList instead of folderDataList */}
+                        {filteredFolderDataList?.length > 0 ? (
+                            filteredFolderDataList.map((folder: FolderData, index: number) => {
+                                const title = folder.name || `Folder ${index + 1}`;
+                                const subtitle = `${getRelativeTime(folder.createdEpoch)}  |  ${folder.reportCounts} Reports`;
+                                const imageSrc = "/09ec0cd855c261e47cb0ec43164ad0fc45f948d8.png";
 
-                            const encodedTitle = encodeURIComponent(title);
-                            const encodedId = encodeURIComponent(folder.folderId);
+                                const encodedTitle = encodeURIComponent(title);
+                                const encodedId = encodeURIComponent(folder.folderId);
 
-                            return (
-                                <FolderCard
-                                    key={folder.folderId}
-                                    folder={folder}
-                                    title={title}
-                                    subtitle={subtitle}
-                                    imageSrc={imageSrc}
-                                    link={`/folders/${encodedId}/${encodedTitle}`}
-                                    onEdit={handleEditFolder}
-                                    onDelete={handleDeleteFolder}
-                                    selectionMode={selectionMode}
-                                    isSelected={selectedFolderIds.includes(folder.folderId)}
-                                    onSelect={handleFolderSelect}
-                                />
-                            );
-                        })}
+                                return (
+                                    <FolderCard
+                                        key={folder.folderId}
+                                        folder={folder}
+                                        title={title}
+                                        subtitle={subtitle}
+                                        imageSrc={imageSrc}
+                                        link={`/folders/${encodedId}/${encodedTitle}`}
+                                        onEdit={handleEditFolder}
+                                        onDelete={handleDeleteFolder}
+                                        selectionMode={selectionMode}
+                                        isSelected={selectedFolderIds.includes(folder.folderId)}
+                                        onSelect={handleFolderSelect}
+                                    />
+                                );
+                            })
+                        ) : (
+                            // Show message when no folders match search
+                            searchTerm ? (
+                                <div
+                                    className="flex flex-col items-center justify-center text-center"
+                                    style={{ marginLeft: '752px' }}
+                                >
+                                    <img
+                                        src="/9d3b1e529ff482abe61dba009ba6478444538807.png"
+                                        alt="No folders"
+                                        className="mb-4 w-80 h-80 object-contain"
+                                    />
+                                    <p className="text-gray-500 text-lg">
+                                        No folders found matching "{searchTerm}"
+                                    </p>
+                                    <p className="text-gray-400 text-sm mt-2">
+                                        Try searching by folder name or ID
+                                    </p>
+                                </div>
+                            ) : (
+                                <div
+                                    className="flex flex-col items-center justify-center text-center"
+                                    style={{ marginLeft: '752px' }}
+                                >
+                                    <img
+                                        src="/9d3b1e529ff482abe61dba009ba6478444538807.png"
+                                        alt="No folders"
+                                        className="mb-4 w-80 h-80 object-contain"
+                                    />
+                                    <p className="text-gray-500 text-lg">No folders found</p>
+                                </div>
+                            )
+
+                        )}
                     </div>
                 </div>
+
 
                 {showPopup && (
                     <UploadPopup
@@ -447,10 +527,10 @@ const FolderCard: React.FC<FolderCardProps> = ({
 
     return (
         <div className={`relative flex flex-col items-center w-[140px] md:w-[180px] gap-2 p-3 rounded-md transition-all ${selectionMode
-                ? isSelected
-                    ? 'bg-blue-100 border-2 border-blue-500'
-                    : 'hover:bg-gray-100 border-2 border-transparent'
-                : 'hover:bg-gray-200'
+            ? isSelected
+                ? 'bg-blue-100 border-2 border-blue-500'
+                : 'hover:bg-gray-100 border-2 border-transparent'
+            : 'hover:bg-gray-200'
             }`}>
             {/* Checkbox for selection mode */}
             {selectionMode && (
@@ -551,7 +631,7 @@ const AccessModal: React.FC<AccessModalProps> = ({
 
     // Helper function to check if a member already has access to any selected folder
     const memberHasExistingAccess = (memberId: number) => {
-        return selectedFolders.some(folder => 
+        return selectedFolders.some(folder =>
             folder.accessToUserIds?.includes(memberId)
         );
     };

@@ -7,6 +7,7 @@ import { BasicDetailsList, ListFlag, OTPSend, VerigyOTps, ListPincode, listCount
 import { decryptData } from '../utils/webCrypto';
 import MasterHome from '../components/MasterHome';
 import { toast } from 'react-toastify';
+import { FaLessThan } from 'react-icons/fa';
 
 interface FormData {
   firstName: string;
@@ -402,7 +403,7 @@ const AddBasicDetails: React.FC = () => {
 
   const handleSendPhoneOTP = async () => {
     setPhoneOtpLoading
-    (true);
+      (true);
     try {
       const currentUserId = await getUserId();
       const newCountryCode = formik.values.countryCode;
@@ -620,7 +621,7 @@ const AddBasicDetails: React.FC = () => {
     }
   };
 
- 
+
 
   useEffect(() => {
     if (listCountyCode.length > 0 && listDetails) {
@@ -1113,35 +1114,37 @@ const AddBasicDetails: React.FC = () => {
   return (
     <MasterHome>
       <div className="h-[calc(100vh-80px)] sm:h-[calc(100vh-90px)] md:h-[calc(100vh-100px)] lg:h-[calc(100vh-134px)] 2xl:h-[calc(100vh-120x)] bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
-        <div className="flex justify-between items-center  mx-3">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-gray-600 hover:text-gray-800 font-medium text-sm sm:text-base transition-colors duration-200"
-          >
-            Back 
-          </button>
-        </div>
+        <div className="flex justify-between items-center mx-3 p-3">
+  <button
+    onClick={() => router.push('/dashboard')}
+    className="flex items-center text-black font-bold text-sm sm:text-base transition-colors duration-200"
+  >
+    <FaLessThan className="w-4 h-4 mr-2" />
+    Back
+  </button>
+</div>
 
-    {!isEmailVerified && !userEmail?.isEmailVerified && (
-  <div className="w-full flex justify-end">
-    <div className="w-full sm:w-1/2 bg-red-700 text-white flex flex-col sm:flex-row justify-between items-center p-4 rounded-md mx-4 sm:mx-0 mb-4 shadow-md">
-      {/* Message */}
-      <div className="text-center sm:text-left mb-2 sm:mb-0">
-        <p className="font-semibold text-sm sm:text-base">Your email isn’t verified yet.</p>
-        <p className="text-sm sm:text-base">Please verify to access all features.</p>
-      </div>
 
-      {/* Button */}
-      <button
-        onClick={handleEmailVerificationClick}
-        disabled={otpLoading}
-        className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded-md text-sm sm:text-base mt-2 sm:mt-0 sm:ml-4 transition-colors duration-200"
-      >
-        {otpLoading ? 'Sending OTP...' : 'Verify Now'}
-      </button>
-    </div>
-  </div>
-)}
+        {!isEmailVerified && !userEmail?.isEmailVerified && (
+          <div className="w-full flex justify-end">
+            <div className="w-full sm:w-1/2 bg-red-700 text-white flex flex-col sm:flex-row justify-between items-center p-4 rounded-md mx-4 sm:mx-0 mb-4 shadow-md">
+              {/* Message */}
+              <div className="text-center sm:text-left mb-2 sm:mb-0">
+                <p className="font-semibold text-sm sm:text-base">Your email isn’t verified yet.</p>
+                <p className="text-sm sm:text-base">Please verify to access all features.</p>
+              </div>
+
+              {/* Button */}
+              <button
+                onClick={handleEmailVerificationClick}
+                disabled={otpLoading}
+                className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded-md text-sm sm:text-base mt-2 sm:mt-0 sm:ml-4 transition-colors duration-200"
+              >
+                {otpLoading ? 'Sending OTP...' : 'Verify Now'}
+              </button>
+            </div>
+          </div>
+        )}
 
 
 
@@ -1419,15 +1422,15 @@ const AddBasicDetails: React.FC = () => {
                     {loading ? 'Updating...' : 'Update'}
                   </button>
 
-                 <div className="text-center text-xs sm:text-sm hover:underline transition-all duration-200 cursor-pointer">
-  <span className="text-gray-600">Click Here to </span>
-  <span
-    className="text-blue-700 font-semibold underline"
-    onClick={() => router.push("/change-password")}
-  >
-    Change Password
-  </span>
-</div>
+                  <div className="text-center text-xs sm:text-sm hover:underline transition-all duration-200 cursor-pointer">
+                    <span className="text-gray-600">Click Here to </span>
+                    <span
+                      className="text-blue-700 font-semibold underline"
+                      onClick={() => router.push("/change-password")}
+                    >
+                      Change Password
+                    </span>
+                  </div>
                 </div>
 
                 {formik.status && (

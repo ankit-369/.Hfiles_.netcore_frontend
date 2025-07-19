@@ -6,6 +6,7 @@ import { MemberList, GetRequestList, RespondToRequest, SoftDeleteMember, EditMem
 import { decryptData } from '../utils/webCrypto';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FaLessThan } from 'react-icons/fa';
 
 interface Member {
     id: number; requestId?: number; type: 'dependent' | 'independent';
@@ -18,12 +19,15 @@ const BackToHome = () => {
     const router = useRouter();
     return (
         <div className="w-full flex items-center mb-4">
-            <button
-                onClick={() => router.push('/dashboard')}
-                className="text-gray-600 hover:text-blue-700 text-sm md:text-base font-medium px-3 py-1 rounded transition-colors duration-200">
-                Back to Home
-            </button>
-        </div>
+  <button
+    onClick={() => router.push('/dashboard')}
+    className="flex items-center text-black px-3 py-1 rounded transition-colors duration-200"
+  >
+    <FaLessThan className="w-4 h-4 mr-2" />
+    Back
+  </button>
+</div>
+
     );
 };
 
